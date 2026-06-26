@@ -5,6 +5,35 @@ Newest at the top. Format: Decision -> Why -> (any tradeoff).
 
 ---
 
+## 2026-06-25 — Auth screen: split-screen layout with ambient brand panel
+**Decision:** Auth uses a split-screen (form left, animated brand canvas right)
+rather than a centered card. Right panel runs a slow drifting-particle animation;
+left panel has a faint drifting glow.
+**Why:** A centered card wastes desktop space and reads as generic/AI-generated.
+The split fills the screen, gives Recall a distinctive identity, and the ambient
+(not narrative) motion suits a screen users pass through repeatedly. The literal
+"PDF → AI → answer" explainer animation is saved for a future landing page, where
+first-impression storytelling matters more.
+**Tradeoff:** More to build than a plain card, but high identity payoff.
+
+## 2026-06-25 — Logo: connected-node cluster
+**Decision:** Recall's logo is a cluster of connected dots on a blue rounded
+square (kept the "brain" spirit but as linked nodes).
+**Why:** Doubles as a brain/neural motif and a knowledge-graph/embedding network —
+on-theme for what Recall actually does — and works as a recurring brand motif.
+
+## 2026-06-25 — Visual design: dark theme, electric blue accent
+**Decision:** Recall uses a dark "developer-tool" aesthetic. Core palette:
+- Page background: #0d0f12 (near-black)
+- Card/surface: #15181d
+- Borders: #1f2329 (subtle), #2a2f37 (inputs/hover)
+- Primary text: #e8eaed · Secondary/muted text: #8b9096
+- Accent (buttons, links, focus): #2f6bff (electric blue)
+- Success: a separate green (e.g. #15b884) so it's distinct from the accent
+**Why:** Fits an AI/developer tool; blue reads technical and trustworthy. Dark
+theme is the requested direction and suits long study sessions.
+**Tradeoff:** Must ensure sufficient text contrast on the dark background (accessibility).
+
 ## 2026-06-23 — Version control + CI/CD plan
 **Decision:** Use git + a private GitHub repo (`recall`) from day one, comitting 
 docs and code as the project progresses (flip to public when portfolio-ready). 
