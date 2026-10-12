@@ -22,7 +22,10 @@ test("no horizontal scroll at phone width on any screen @mobile", async ({ page 
   for (const path of PAGES.filter((p) => p !== "/demo")) {
     await page.goto(path);
     await page.waitForTimeout(400);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    // Compare with the device width, not window.innerWidth: on mobile, content that's too wide
+    // stretches innerWidth to fit it, which would hide the very overflow we're checking for.
+    const width = page.viewportSize()?.width ?? 0;
+    const overflow = await page.evaluate((w) => document.documentElement.scrollWidth - w, width);
     expect(overflow, `${path} overflows by ${overflow}px`).toBeLessThanOrEqual(0);
   }
 });

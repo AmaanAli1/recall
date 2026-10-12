@@ -28,4 +28,14 @@ test.describe("app shell", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   });
+
+  test("footer shows the build status and the builder links", async ({ page }) => {
+    await page.goto("/");
+    const footer = page.getByRole("contentinfo");
+    await expect(footer.getByRole("img", { name: /^Build progress: Phase 2 of 6/ })).toBeVisible();
+    await expect(footer.getByRole("link", { name: "LinkedIn" })).toHaveAttribute("href", "https://www.linkedin.com/in/amaan-ali-85967a1b1/");
+    await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/AmaanAli1");
+    await expect(footer.getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:amaan.ali99@yahoo.com");
+    await expect(footer.getByRole("link", { name: /Resume/ })).toHaveCount(0);
+  });
 });

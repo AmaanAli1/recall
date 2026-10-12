@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { listDynoRuns, startDynoRun, type DynoRun } from "@/lib/api";
-import { estimateOf, liveN, nextRunId, upsertRun, type ChartMetric, type LiveView, type Role, type RunState } from "../_lib/model";
+import { cx, estimateOf, gateOf, liveN, nextRunId, runNum, upsertRun, type ChartMetric, type LiveView, type Role, type RunState } from "../_lib/model";
+import s from "../dyno.module.css";
+import { Collapse } from "./Collapse";
 import { ComparePanel } from "./ComparePanel";
 import { DynoHeader } from "./DynoHeader";
 import { Gauges } from "./Gauges";
@@ -53,6 +55,8 @@ export function DynoScreen() {
     setRun({ id: nextRunId(runs), date: today(), progress: { done: 0, total: anchor.n, stage: "retrieve" }, status: "running", finished: null, elapsedMs: 0, anchor });
     setPanelClosed(false);
     setHover(null);
+    // Starting a run is the newest intent, so it takes the panel slot from Compare.
+    setCmpOpen(false);
     cancelRef.current = startDynoRun(
       (p) => setRun((r) => (r && r.status === "running" ? { ...r, progress: p } : r)),
       (finished) => {
@@ -126,6 +130,9 @@ export function DynoScreen() {
   const b = has(cmpB) ? (cmpB as string) : base.id;
   const roleOf = (id: string): Role => (!cmpOpen ? null : id === a ? "A" : id === b ? "B" : null);
 
+  // One big panel at a time: while Compare is open, a visible run shrinks to a one-line strip.
+  const runVisible = !!run && (running || (run.status === "done" && !panelClosed));
+
   const finishedIdx = run?.finished ? runs.findIndex((r) => r.id === run.finished?.id) : -1;
   const prev = finishedIdx > 0 ? runs[finishedIdx - 1] : null;
 
@@ -146,7 +153,7 @@ export function DynoScreen() {
       <div className="-mt-4 flex flex-col">
         {run && (
           <RunPanel
-            open={running || (run.status === "done" && !panelClosed)}
+            open={runVisible && !cmpOpen}
             run={run}
             prev={prev}
             base={base}
@@ -156,6 +163,26 @@ export function DynoScreen() {
             }}
           />
         )}
+        <Collapse open={runVisible && cmpOpen}>
+          <div className="num flex items-center gap-3 rounded border border-line-2 bg-sheet py-2.5 pl-4 pr-3 text-sm">
+            <span
+              aria-hidden="true"
+              className={cx("h-2 w-2 flex-none rounded-full", running && s.blink)}
+              style={{ background: running ? "var(--mid)" : run?.finished && gateOf(run.finished, base) === "fail" ? "var(--bad)" : "var(--good)" }}
+            />
+            {/* Not a live region on purpose: the count changes many times a second. */}
+            <span className="min-w-0 flex-auto">
+              {running && run
+                ? `Run ${runNum(run.id)} running · ${run.progress.done} of ${run.progress.total} questions`
+                : run?.finished
+                  ? `Run ${runNum(run.finished.id)} finished · ${gateOf(run.finished, base) === "fail" ? "into the redline" : "clear of every redline"}`
+                  : ""}
+            </span>
+            <button type="button" className="btn btn-ghost min-h-[34px] flex-none rounded bg-paper! px-3 py-1.5 text-[13px]" onClick={() => setCmpOpen(false)}>
+              Show run
+            </button>
+          </div>
+        </Collapse>
         <ComparePanel
           open={cmpOpen}
           runs={runs}

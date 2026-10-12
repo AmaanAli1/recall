@@ -160,6 +160,10 @@
   .nav-l:hover { color: var(--ink); background: var(--sheet-2); }
 }
 
+/* Page transition (app/(app)/template.tsx): content fades in and rises under a header that stays put. */
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } }
+.page-in { animation: pageIn 320ms var(--ease-out) backwards; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }

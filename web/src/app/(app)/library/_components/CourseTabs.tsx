@@ -2,6 +2,7 @@
 
 import { useRef, type KeyboardEvent } from "react";
 import type { Course } from "@/lib/api";
+import { colorHex, courseLabel } from "@/lib/courses";
 import s from "../library.module.css";
 
 export const tabId = (courseId: string) => `tab-${courseId}`;
@@ -29,7 +30,7 @@ export function CourseTabs({ courses, current, onPick }: { courses: Course[]; cu
   };
 
   return (
-    <div role="tablist" aria-label="Courses" onKeyDown={onKeyDown} className="mt-10 flex flex-wrap items-end gap-1 pl-3">
+    <div role="tablist" aria-label="Courses" onKeyDown={onKeyDown} className="flex flex-wrap items-end gap-1 pl-3">
       {courses.map((c, i) => {
         const on = c.id === current;
         return (
@@ -45,9 +46,12 @@ export function CourseTabs({ courses, current, onPick }: { courses: Course[]; cu
             aria-controls={PANEL_ID}
             tabIndex={on ? 0 : -1}
             onClick={() => onPick(c.id)}
-            className={`${s.earTab} ${s.tab} ${on ? s.tabOn : s.tabOff}`}
+            title={c.term ? `${courseLabel(c)} · ${c.term}` : courseLabel(c)}
+            className={`${s.earTab} ${s.tab} ${on ? s.tabOn : s.tabOff} ${c.archived ? s.tabArchived : ""}`}
           >
-            {c.name} <span className={`num ${s.tabCount}`}>[{c.documents.length}]</span>
+            <span aria-hidden="true" className={s.tabDot} style={{ background: colorHex(c.color) }} />
+            {courseLabel(c)}
+            {c.archived && <span className="sr-only"> (archived)</span>} <span className={`num ${s.tabCount}`}>[{c.documents.length}]</span>
           </button>
         );
       })}

@@ -8,10 +8,21 @@ import s from "../ask.module.css";
 export function Composer({
   inputRef,
   busy,
+  courseName,
+  sample,
+  empty,
+  followUp,
   onAsk,
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
   busy: boolean;
+  courseName: string;
+  /** Sample courses ship with every demo; others are the visitor's own. */
+  sample: boolean;
+  /** No documents yet: nothing to answer from, so asking is disabled. */
+  empty: boolean;
+  /** Inside an open chat the box asks a follow-up; on a fresh chat it starts one. */
+  followUp: boolean;
   onAsk: (question: string) => void;
 }) {
   return (
@@ -21,13 +32,13 @@ export function Composer({
         e.preventDefault();
         const el = inputRef.current;
         const q = el?.value.trim() ?? "";
-        if (!q || busy) return;
+        if (!q || busy || empty) return;
         onAsk(q);
         if (el) el.value = "";
       }}
     >
       <label htmlFor="qf" className="sr-only">
-        Ask about Algorithms
+        Ask about {courseName}
       </label>
       <div className="flex items-center gap-2.5 rounded-[5px] border border-line-2 bg-sheet py-2 pl-4 pr-2">
         <span aria-hidden="true" className="font-mono text-[13px] font-medium text-red">
@@ -39,19 +50,21 @@ export function Composer({
           name="question"
           type="text"
           autoComplete="off"
-          placeholder="e.g. Why does Bellman-Ford allow negative edges…"
+          disabled={empty}
+          placeholder={empty ? `Add a PDF to ${courseName} first` : followUp ? "Ask a follow-up…" : `Ask about ${courseName}…`}
           className="min-h-10 min-w-0 flex-auto border-0 bg-transparent text-base text-ink caret-red outline-none placeholder:text-ink-3"
         />
         <button
           type="submit"
           aria-busy={busy}
+          disabled={empty}
           className="btn btn-red inline-flex min-h-11 items-center gap-2.5 rounded border-0 py-2 pl-3.5 pr-2 text-[15px] font-medium"
         >
           Ask <kbd className="kbd">⏎</kbd>
         </button>
       </div>
       <p className="mt-2.5 text-[13px] text-ink-2">
-        Using the sample Algorithms course.{" "}
+        {sample ? `Using the sample ${courseName} course.` : `Using your ${courseName} course.`}{" "}
         <Link href="/library" className="lnk lnk-hl text-ink">
           Add your own PDFs in Library →
         </Link>

@@ -91,7 +91,7 @@ export function ComparePanel({ open, runs, base, a, b, onPickA, onPickB, onSwap,
 
           {A && B && a !== b ? (
             <>
-              <div className="mt-[18px] overflow-x-auto">
+              <div className="relative mt-[18px] overflow-x-auto">
                 <table className="num w-full min-w-[620px] border-collapse text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-2">

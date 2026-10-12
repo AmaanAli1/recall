@@ -3,8 +3,9 @@
  * small realistic delays so loading states get exercised.
  * The demo session is kept in localStorage here; the real one is an httpOnly cookie.
  */
-import { ANSWERS, CHATS, COURSES, DYNO_RUNS, NEXT_RUN, STARTERS } from "./mock-data";
-import type { Answer, ChatSummary, Course, CourseDocument, DemoSession, DynoProgress, DynoRun } from "./types";
+import { ANSWERS, CHATS, COURSE_STARTERS, COURSES, DYNO_RUNS, NEXT_RUN } from "./mock-data";
+import { cleanCode, cleanName, COURSE_LIMIT, courseNameError } from "../courses";
+import type { Answer, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 const SESSION_KEY = "recall-demo";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -58,13 +59,80 @@ export async function endDemoSession(): Promise<void> {
 
 const uploaded: Record<string, CourseDocument[]> = {};
 const deletedDocs = new Set<string>();
+/** Courses for this tab's session: the samples plus any the visitor made. Edits patch this list. */
+let courses: Course[] = clone(COURSES);
+/** Documents that went through OCR: they become ready with passages. */
+const ocrDone: Record<string, CourseDocument> = {};
 
 export async function listCourses(): Promise<Course[]> {
   await wait(120);
-  return clone(COURSES).map((c) => ({
+  return clone(courses).map((c) => ({
     ...c,
-    documents: [...(uploaded[c.id] ?? []), ...c.documents].filter((d) => !deletedDocs.has(d.id)),
+    documents: [...(uploaded[c.id] ?? []), ...c.documents]
+      .filter((d) => !deletedDocs.has(d.id))
+      .map((d) => ocrDone[d.id] ?? d),
   }));
+}
+
+/** Same checks the real API must run (the dialog's checks are only for UX). */
+function checkInput(input: CourseInput, selfId?: string) {
+  const others = courses.filter((c) => c.id !== selfId).map((c) => c.name);
+  const err = courseNameError(input.name, others);
+  if (err) throw new Error(err);
+}
+
+export async function createCourse(input: CourseInput): Promise<Course> {
+  await wait(150);
+  if (courses.length >= COURSE_LIMIT) throw new Error(`A demo can hold ${COURSE_LIMIT} courses.`);
+  checkInput(input);
+  const course: Course = {
+    id: `c-${Date.now().toString(36)}`,
+    name: cleanName(input.name),
+    code: input.code ? cleanCode(input.code) : undefined,
+    term: input.term || undefined,
+    color: input.color,
+    sample: false,
+    documents: [],
+  };
+  courses = [...courses, course];
+  return clone(course);
+}
+
+export async function updateCourse(id: string, patch: Partial<CourseInput> & { archived?: boolean }): Promise<Course> {
+  await wait(100);
+  const cur = courses.find((c) => c.id === id);
+  if (!cur) throw new Error("That course no longer exists.");
+  if (patch.name !== undefined) checkInput({ name: patch.name, color: cur.color }, id);
+  const next: Course = {
+    ...cur,
+    ...(patch.name !== undefined && { name: cleanName(patch.name) }),
+    ...(patch.code !== undefined && { code: cleanCode(patch.code) || undefined }),
+    ...(patch.term !== undefined && { term: patch.term || undefined }),
+    ...(patch.color !== undefined && { color: patch.color }),
+    ...(patch.archived !== undefined && { archived: patch.archived }),
+  };
+  courses = courses.map((c) => (c.id === id ? next : c));
+  return clone(next);
+}
+
+export async function deleteCourse(id: string): Promise<void> {
+  courses = courses.filter((c) => c.id !== id);
+}
+
+/** Reads a scanned PDF: ~60% of the time is OCR, the rest is embedding the new text. */
+export async function runOcr(courseId: string, documentId: string, onProgress?: (pct: number, stage: "ocr" | "embed") => void): Promise<CourseDocument> {
+  const doc = [...(uploaded[courseId] ?? []), ...(courses.find((c) => c.id === courseId)?.documents ?? [])].find((d) => d.id === documentId);
+  if (!doc) throw new Error("That document no longer exists.");
+  let pct = 0;
+  while (pct < 100) {
+    await wait(160);
+    pct = Math.min(100, pct + 3);
+    onProgress?.(pct, pct < 60 ? "ocr" : "embed");
+  }
+  const pages = doc.pages ?? 10;
+  const done: CourseDocument = { ...doc, status: "ready", passages: pages * 3 + 5, progress: undefined, stage: undefined, error: undefined };
+  ocrDone[documentId] = done;
+  return clone(done);
 }
 
 export async function uploadDocument(courseId: string, file: File, onProgress?: (pct: number) => void): Promise<CourseDocument> {
@@ -93,16 +161,31 @@ export async function deleteDocument(_courseId: string, documentId: string): Pro
 
 // ---------- ask ----------
 
-export async function ask(_courseId: string, question: string): Promise<Answer> {
+export async function ask(courseId: string, question: string): Promise<Answer> {
   await wait(450);
-  const starter = STARTERS.find((s) => s.question === question || s.id === question);
-  return clone(ANSWERS[starter?.id ?? "dp"]);
+  // Canned answers exist for each course's starter questions; anything else in
+  // that course gets its first starter's answer (the real backend answers anything).
+  const all = Object.values(COURSE_STARTERS).flat();
+  const starter = all.find((s) => s.question === question || s.id === question) ?? COURSE_STARTERS[courseId]?.[0];
+  if (!starter) throw new Error("This course has no documents yet.");
+  return clone(ANSWERS[starter.id]);
 }
 
 const deletedChats = new Set<string>();
+const chatEdits: Record<string, Partial<Pick<ChatSummary, "title" | "pinned">>> = {};
 
-export async function listChats(): Promise<ChatSummary[]> {
-  return CHATS.filter((c) => !deletedChats.has(c.id));
+export async function listChats(courseId: string): Promise<ChatSummary[]> {
+  return CHATS.filter((c) => c.courseId === courseId && !deletedChats.has(c.id)).map((c) => ({ ...c, ...chatEdits[c.id] }));
+}
+
+export async function renameChat(id: string, title: string): Promise<void> {
+  const t = cleanName(title).slice(0, 80);
+  if (!t) throw new Error("Give the chat a name.");
+  chatEdits[id] = { ...chatEdits[id], title: t };
+}
+
+export async function setChatPinned(id: string, pinned: boolean): Promise<void> {
+  chatEdits[id] = { ...chatEdits[id], pinned };
 }
 
 export async function deleteChat(id: string): Promise<void> {
