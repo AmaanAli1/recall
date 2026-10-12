@@ -220,9 +220,9 @@ export function LibraryScreen() {
             <CourseTabs courses={courses} current={course.id} onPick={pick} />
             <section id={PANEL_ID} role="tabpanel" aria-labelledby={tabId(course.id)} className="sheet relative">
               <div className="ear bg-line-2 p-px">
-                <div className="ear relative bg-sheet pb-8 pl-[76px] pr-8 pt-7">
+                <div className="ear relative bg-sheet pb-8 pl-12 pr-4 pt-7 sm:pl-[76px] sm:pr-8">
                   {/* The red margin line of ruled paper. */}
-                  <span aria-hidden="true" className="absolute bottom-0 left-[54px] top-0 w-px bg-margin" />
+                  <span aria-hidden="true" className="absolute bottom-0 left-[34px] top-0 w-px bg-margin sm:left-[54px]" />
                   <DropZone courseName={course.name} onAccept={accept} />
                   {course.documents.length > 0 ? (
                     <DocumentLedger

@@ -93,7 +93,7 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
   return (
     <tr className={`${s.row} ${failed ? s.failed : ""} ${menuOpen ? s.on : ""} border-t border-rule`}>
       <th scope="row" className="relative py-4 pl-0 pr-3 text-left font-normal">
-        <span aria-hidden="true" className={`${s.rowN} absolute -left-[52px] top-[18px] w-[30px] text-right font-mono text-xs`}>
+        <span aria-hidden="true" className={`${s.rowN} absolute -left-[44px] top-[18px] w-[26px] sm:-left-[52px] sm:w-[30px] text-right font-mono text-xs`}>
           {n}.
         </span>
         <span className="flex min-w-0 items-center gap-3">
