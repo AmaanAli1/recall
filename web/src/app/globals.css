@@ -69,7 +69,13 @@
 
 /* ---------- Shared signature pieces (used on every screen) ---------- */
 
-.num { font-variant-numeric: tabular-nums; }
+/*
+ * Tabular figures, digits only. Schibsted Grotesk's "tnum" feature also makes
+ * punctuation (. : ,) tabular-width, which opens odd gaps in mixed text such as
+ * "Week6.pdf" or "Reranker: …". So sans text keeps proportional punctuation;
+ * Fragment Mono is monospaced anyway, which is where our aligned numbers live.
+ */
+.num { font-variant-numeric: lining-nums; }
 
 .skip {
   position: absolute; left: 16px; top: -60px; z-index: 50;
