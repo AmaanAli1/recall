@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment } from "react";
 import type { Answer } from "@/lib/api";
-import { STARTERS } from "@/lib/api/mock-data";
+import type { Starter } from "@/lib/api/mock-data";
 import s from "../ask.module.css";
 
 /** "boot" = before we know whether this is a fresh arrival: the sheet stays blank. */
@@ -18,6 +19,7 @@ export function AnswerSheet(props: {
   seq: number;
   docCount: number | null;
   courseName: string;
+  starters: Starter[];
   picked: number;
   hover: number;
   showTiming: boolean;
@@ -53,7 +55,20 @@ export function AnswerSheet(props: {
   );
 }
 
-function Starters({ docCount, courseName, onAsk }: { docCount: number | null; courseName: string; onAsk: (q: string) => void }) {
+function Starters({ docCount, courseName, starters, onAsk }: { docCount: number | null; courseName: string; starters: Starter[]; onAsk: (q: string) => void }) {
+  if (docCount === 0) {
+    return (
+      <div className={s.swapIn}>
+        <h1 className={`${s.h1} max-w-[22em]`}>{courseName} has no documents yet.</h1>
+        <p className="m-0 max-w-[40em] text-[15px] leading-9 text-ink-2">
+          Recall only answers from your own notes, so add a lecture PDF first.
+        </p>
+        <p className="m-0 mt-9 text-[15px] leading-9">
+          <Link href="/library" className="lnk lnk-hl text-ink">Add PDFs to {courseName} in Library →</Link>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className={s.swapIn}>
       <h1 className={`${s.h1} max-w-[22em]`}>Ask anything about {courseName}.</h1>
@@ -62,7 +77,7 @@ function Starters({ docCount, courseName, onAsk }: { docCount: number | null; co
       </p>
       <p className="m-0 mt-9 text-[13px] leading-9 text-ink-3">Try one of these</p>
       <div className="mt-0.5 flex flex-col items-start gap-2">
-        {STARTERS.map((q) => (
+        {starters.map((q) => (
           <button key={q.id} type="button" className={s.starter} onClick={() => onAsk(q.question)}>
             <span className={s.starterQ}>{q.question}</span>
             <span className={s.starterGo} aria-hidden="true">→</span>

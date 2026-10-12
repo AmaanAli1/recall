@@ -6,7 +6,7 @@
  * the function signatures (the contract) stay the same.
  */
 import * as mock from "./mock";
-import type { Answer, ChatSummary, Course, CourseDocument, DemoSession, DynoProgress, DynoRun } from "./types";
+import type { Answer, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 export * from "./types";
 
@@ -83,6 +83,34 @@ export function uploadDocument(
   return http(`/courses/${courseId}/documents`, { method: "POST", body });
 }
 
+/** POST /courses: make a course. The server enforces the limits too (10 courses, unique name). */
+export function createCourse(input: CourseInput): Promise<Course> {
+  return USE_MOCK ? mock.createCourse(input) : http("/courses", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** PATCH /courses/{id}: rename, recolour, change term, archive or unarchive. */
+export function updateCourse(id: string, patch: Partial<CourseInput> & { archived?: boolean }): Promise<Course> {
+  return USE_MOCK ? mock.updateCourse(id, patch) : http(`/courses/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+/** DELETE /courses/{id}: the course, its PDFs and its chats. */
+export function deleteCourse(id: string): Promise<void> {
+  return USE_MOCK ? mock.deleteCourse(id) : http(`/courses/${id}`, { method: "DELETE" });
+}
+
+/**
+ * POST /courses/{id}/documents/{docId}/ocr: read a scanned PDF into text, then embed it.
+ * Progress comes in two stages: "ocr" (reading page images) then "embed".
+ */
+export function runOcr(
+  courseId: string,
+  documentId: string,
+  onProgress?: (pct: number, stage: "ocr" | "embed") => void,
+): Promise<CourseDocument> {
+  if (USE_MOCK) return mock.runOcr(courseId, documentId, onProgress);
+  return http(`/courses/${courseId}/documents/${documentId}/ocr`, { method: "POST" });
+}
+
 export function deleteDocument(courseId: string, documentId: string): Promise<void> {
   return USE_MOCK ? mock.deleteDocument(courseId, documentId) : http(`/courses/${courseId}/documents/${documentId}`, { method: "DELETE" });
 }
@@ -94,8 +122,19 @@ export function ask(courseId: string, question: string): Promise<Answer> {
   return USE_MOCK ? mock.ask(courseId, question) : http("/ask", { method: "POST", body: JSON.stringify({ courseId, question }) });
 }
 
-export function listChats(): Promise<ChatSummary[]> {
-  return USE_MOCK ? mock.listChats() : http("/chats");
+/** GET /chats?courseId=…: saved chats for one course. */
+export function listChats(courseId: string): Promise<ChatSummary[]> {
+  return USE_MOCK ? mock.listChats(courseId) : http(`/chats?courseId=${encodeURIComponent(courseId)}`);
+}
+
+/** PATCH /chats/{id}: rename. */
+export function renameChat(id: string, title: string): Promise<void> {
+  return USE_MOCK ? mock.renameChat(id, title) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
+}
+
+/** PATCH /chats/{id}: pin to the top, or unpin. */
+export function setChatPinned(id: string, pinned: boolean): Promise<void> {
+  return USE_MOCK ? mock.setChatPinned(id, pinned) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ pinned }) });
 }
 
 export function deleteChat(id: string): Promise<void> {

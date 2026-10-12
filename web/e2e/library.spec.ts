@@ -108,4 +108,108 @@ test.describe("library", () => {
     await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/library$/);
   });
+
+  test("New course: duplicate names are caught, then the course is created and opened @mobile", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await expect(dialog).toBeVisible();
+    const name = dialog.getByRole("textbox", { name: "Course name" });
+    await expect(name).toBeFocused();
+
+    await name.fill("  algorithms ");
+    await expect(dialog.getByText("You already have a course called algorithms.")).toBeVisible();
+
+    await name.fill("Data Structures");
+    await dialog.getByRole("textbox", { name: /Course code/ }).fill("cp213");
+    await dialog.getByRole("radio", { name: "Rust" }).click();
+    await dialog.getByRole("button", { name: "Create course" }).click();
+
+    await expect(dialog).toBeHidden();
+    const tab = page.getByRole("tab", { name: /CP213 · Data Structures/ });
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "Nothing in Data Structures yet." })).toBeVisible();
+  });
+
+  test("New course: Escape after typing asks before discarding", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await dialog.getByRole("textbox", { name: "Course name" }).fill("Networks");
+    await page.keyboard.press("Escape");
+    const ask = dialog.getByRole("group", { name: "Discard changes?" });
+    await expect(ask).toBeVisible();
+    await ask.getByRole("button", { name: "Keep editing" }).click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Discard" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("tab", { name: /Networks/ })).toHaveCount(0);
+  });
+
+  test("a new course with PDFs uploads them and offers to ask once they're ready", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await dialog.getByRole("textbox", { name: "Course name" }).fill("Networks");
+    await dialog.getByLabel("Lecture PDFs").setInputFiles([PDF]);
+    await expect(dialog.getByRole("list", { name: "PDFs to add" })).toContainText("Week7_Graphs.pdf");
+    await dialog.getByRole("button", { name: "Create and add 1 PDF" }).click();
+    await expect(page.getByRole("tab", { name: /Networks/ })).toHaveAttribute("aria-selected", "true");
+    const go = page.getByRole("link", { name: "Ask about Networks →" });
+    await expect(go).toBeVisible({ timeout: 15_000 });
+    await expect(go).toHaveAttribute("href", /\/ask\?course=/);
+  });
+
+  test("archive hides a course behind the Archived toggle, and Unarchive brings it back", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("tab", { name: /Statistics/ }).click();
+    await page.getByRole("button", { name: "Options for Statistics" }).click();
+    await page.getByRole("menuitem", { name: /^Archive/ }).click();
+    await expect(page.getByRole("tab", { name: /Statistics/ })).toHaveCount(0);
+
+    const toggle = page.getByRole("button", { name: /^Archived/ });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("tab", { name: /Statistics/ }).click();
+    await page.getByRole("button", { name: "Unarchive" }).click();
+    await expect(page.getByRole("button", { name: /^Archived/ })).toHaveCount(0);
+  });
+
+  test("deleting a course asks first, and Undo restores it", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("tab", { name: /Operating Systems/ }).click();
+    await page.getByRole("button", { name: "Options for Operating Systems" }).click();
+    await page.getByRole("menuitem", { name: /^Delete course/ }).click();
+    await page.getByRole("menu", { name: "Options for Operating Systems" }).getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveCount(0);
+    await expect(page.getByText("Operating Systems deleted, with its PDFs and chats.")).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("Run OCR reads the scan, then the document becomes Ready", async ({ page }) => {
+    await openLibrary(page);
+    const row = page.getByRole("row", { name: /Midterm_Review_Scan\.pdf/ });
+    await row.getByRole("button", { name: "Run OCR on Midterm_Review_Scan.pdf" }).click();
+    await expect(row).toContainText("Reading scanned pages (OCR)…");
+    await expect(row).toContainText("Ready", { timeout: 15_000 });
+  });
+
+  test("the last row's menu opens fully on screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openLibrary(page);
+    const more = page.getByRole("button", { name: "More actions for Midterm_Review_Scan.pdf" });
+    await more.scrollIntoViewIfNeeded();
+    await more.click();
+    const box = await page.getByRole("menu", { name: "More actions for Midterm_Review_Scan.pdf" }).boundingBox();
+    expect(box).not.toBeNull();
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(720);
+    expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
+  });
+
+  test("/library?course=os opens on that course", async ({ page }) => {
+    await page.goto("/library?course=os");
+    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
+  });
 });

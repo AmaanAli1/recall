@@ -15,7 +15,33 @@ test.describe("dyno", () => {
     for (const id of ["R8", "R9", "R10", "R11", "R12"]) {
       await expect(table.getByRole("rowheader", { name: new RegExp(`^${id}\\b`) })).toBeVisible();
     }
-    await expect(table.getByRole("link", { name: "Open run R9 in MLflow" })).toBeAttached();
+  });
+
+  test("a run's Details expands in place and highlights what it changed", async ({ page }) => {
+    const table = runsTable(page);
+    const btn = table.getByRole("button", { name: "Show details for run 11" });
+    await expect(btn).toHaveAttribute("aria-expanded", "false");
+    await btn.click();
+    const hide = table.getByRole("button", { name: "Hide details for run 11" });
+    await expect(hide).toHaveAttribute("aria-expanded", "true");
+    const details = page.locator("#det-R11");
+    await expect(details).toContainText("Hybrid: BM25 + vector (RRF)");
+    await expect(details).toContainText("d90b3ee");
+    await hide.click();
+    await expect(table.getByRole("button", { name: "Show details for run 11" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("Run and Compare share one panel slot", async ({ page }) => {
+    await page.getByRole("button", { name: /^Compare runs/ }).click();
+    await expect(page.getByRole("heading", { name: "Compare runs" })).toBeVisible();
+    // Starting a run takes the slot: Compare closes.
+    await page.getByRole("button", { name: "Run Dyno" }).click();
+    await expect(page.getByRole("heading", { name: "Compare runs" })).toBeHidden();
+    // Opening Compare mid-run shrinks the run to a one-line strip.
+    await page.getByRole("button", { name: /^Compare runs/ }).click();
+    await expect(page.getByText(/^Run 13 running · \d+ of 80 questions$/)).toBeVisible();
+    await page.getByRole("button", { name: "Show run" }).click();
+    await expect(page.getByRole("heading", { name: "Compare runs" })).toBeHidden();
   });
 
   test("metric tabs switch the trend chart", async ({ page }) => {

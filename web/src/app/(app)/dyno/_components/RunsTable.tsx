@@ -1,4 +1,7 @@
-import type { DynoRun } from "@/lib/api";
+"use client";
+
+import { Fragment, useState } from "react";
+import type { DynoRun, RunConfig, RunSetting } from "@/lib/api";
 import { redline, signed } from "@/lib/stats";
 import s from "../dyno.module.css";
 import { LABEL, cx, f2, failedMetrics, gateOf, runNum, type LiveView, type Role } from "../_lib/model";
@@ -22,8 +25,71 @@ function Delta({ cur, prev }: { cur: number; prev: number | null }) {
 
 const cell = "p-4 text-right font-mono text-sm whitespace-nowrap";
 
+const SETTING_LABEL: Record<RunSetting, string> = {
+  chunking: "Chunking",
+  retrieval: "Retrieval",
+  topK: "Top-k cited",
+  reranker: "Reranker",
+  rewriting: "Query rewriting",
+  prompt: "Prompt",
+};
+
+const minSec = (s: number) => `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s`;
+
+/**
+ * A run's full setup, in place of a link to MLflow (MLflow is private and has no
+ * login, so visitors could never open it). The one setting this run changed is
+ * highlighted: that's the whole idea of Dyno, change one thing and measure.
+ */
+function RunDetails({ run, cfg }: { run: DynoRun; cfg: RunConfig | undefined }) {
+  if (!cfg) return <p className="m-0 text-[13px] text-ink-2">No setup was logged for this run.</p>;
+  const settings = (Object.keys(SETTING_LABEL) as RunSetting[]).map((k) => ({ k, label: SETTING_LABEL[k], v: String(cfg[k]), changed: cfg.changed.includes(k) }));
+  const rows: { label: string; v: string; changed?: boolean; href?: string }[] = [
+    ...settings,
+    { label: "Embeddings", v: cfg.embedModel },
+    { label: "Answer model", v: cfg.answerModel },
+    { label: "Judge model", v: cfg.judgeModel },
+    { label: "MRR · correctness · relevancy", v: `${f2(run.metrics.mrr)} · ${f2(run.metrics.correct)} · ${f2(run.metrics.relev)}` },
+    { label: "Run time · cost", v: `${minSec(cfg.durationS)} · $${cfg.costUsd.toFixed(2)}` },
+    // TODO(phase 3): link to github.com/AmaanAli1/recall/commit/<sha> once runs log real commits (the sample SHAs would 404).
+    { label: "Git commit", v: cfg.commit },
+    { label: "Golden set", v: `${run.n} questions, page-labelled` },
+  ];
+  return (
+    <>
+      <p className="m-0 mb-3 text-[13px] text-ink-2">
+        {cfg.changed.length
+          ? "Highlighted: the one setting this run changed. Everything else matches the run before."
+          : "The baseline every later run is measured against."}
+      </p>
+      <dl className={s.detGrid}>
+        {rows.map((r) => (
+          <div key={r.label}>
+            <dt>{r.label}</dt>
+            <dd>
+              {r.href ? (
+                <a href={r.href} className="lnk-hl">{r.v}</a>
+              ) : (
+                <span className={r.changed ? s.detChg : undefined}>{r.v}</span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+}
+
 /** MLflow-style run log, newest first, linked to the chart by hover. */
 export function RunsTable({ runs, base, hover, onHover, live, roleOf }: Props) {
+  const [details, setDetails] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string) =>
+    setDetails((d) => {
+      const next = new Set(d);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const faithRed = redline(base.metrics.faith);
   const firstFail = runs.find((r) => gateOf(r, base) === "fail");
   const failKey = firstFail ? failedMetrics(firstFail, base)[0] : null;
@@ -32,10 +98,10 @@ export function RunsTable({ runs, base, hover, onHover, live, roleOf }: Props) {
     <section aria-labelledby="runs-h" className="mt-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
         <h2 id="runs-h" className="m-0 text-[22px] font-normal tracking-[-0.02em]">Runs</h2>
-        <span className="text-[13px] text-ink-2">Logged to MLflow, newest first</span>
+        <span className="text-[13px] text-ink-2">Logged to MLflow, newest first. Open a run’s details to see its full setup.</span>
       </div>
       <div className="sheet">
-        <div className="overflow-x-auto rounded border border-line bg-sheet">
+        <div className="relative overflow-x-auto rounded border border-line bg-sheet">
           <table className="num w-full min-w-[860px] border-collapse text-[15px]">
             <thead>
               <tr className="text-left text-xs text-ink-2">
@@ -86,13 +152,14 @@ export function RunsTable({ runs, base, hover, onHover, live, roleOf }: Props) {
                   const fail = gate === "fail";
                   const role = roleOf(r.id);
                   const on = hover === r.id;
+                  const open = details.has(r.id);
                   return (
+                    <Fragment key={r.id}>
                     <tr
-                      key={r.id}
                       className={cx(s.row, fail && s.fail, role && s.cmp, on && s.on, "border-t border-line")}
                       onMouseEnter={() => onHover(r.id)}
                       onMouseLeave={() => onHover(null)}
-                      // Focus inside the row (the MLflow link) lights it the same way hover does.
+                      // Focus inside the row (the Details button) lights it the same way hover does.
                       onFocus={() => onHover(r.id)}
                       onBlur={() => onHover(null)}
                     >
@@ -121,12 +188,35 @@ export function RunsTable({ runs, base, hover, onHover, live, roleOf }: Props) {
                         </Chip>
                       </td>
                       <td className="whitespace-nowrap py-4 pl-1 pr-5 text-right">
-                        {/* The run API has no MLflow URL yet; the link is a placeholder, as in the design. */}
-                        <a href="#" className={cx(s.mlf, "text-[13px] text-ink-2")} aria-label={`Open run ${r.id} in MLflow`} onClick={(e) => e.preventDefault()}>
-                          MLflow ↗
-                        </a>
+                        <button
+                          type="button"
+                          className={s.detBtn}
+                          aria-expanded={open}
+                          aria-controls={`det-${r.id}`}
+                          aria-label={`${open ? "Hide" : "Show"} details for run ${runNum(r.id)}`}
+                          onClick={() => toggle(r.id)}
+                        >
+                          Details
+                          <svg className={s.detChev} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
+                    <tr className={s.detRow}>
+                      <td colSpan={7}>
+                        <div id={`det-${r.id}`} className={cx(s.collapse, open && s.open)} inert={!open}>
+                          <div className={s.clip}>
+                            <div className={s.slide}>
+                              <div className={s.detIn}>
+                                <RunDetails run={r} cfg={r.config} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    </Fragment>
                   );
                 })}
             </tbody>

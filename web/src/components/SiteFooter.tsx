@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BuildStatus } from "./BuildStatus";
 import { Logo } from "./Logo";
 
 /**
@@ -15,10 +16,7 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
           <p className="mt-3.5 max-w-[26em] text-[15px] leading-relaxed text-ink-2">
             An AI study assistant that answers from your lecture notes and cites the page, with every change measured on the dyno.
           </p>
-          <p className="mt-4.5 inline-flex items-center gap-2 text-[13px] text-ink-2">
-            <span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-mid shadow-[0_0_0_3px_rgba(138,86,5,0.15)]" />
-            In progress: Phase 1, deploying the skeleton
-          </p>
+          <BuildStatus />
         </div>
         <nav aria-labelledby="f-project" className="flex-[1_1_140px]">
           <h2 id="f-project" className="mb-3 text-[13px] font-medium">Project</h2>
@@ -32,10 +30,11 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
         <nav aria-labelledby="f-builder" className="flex-[1_1_140px]">
           <h2 id="f-builder" className="mb-3 text-[13px] font-medium">Builder</h2>
           <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">
-            <li><a href="https://github.com/AmaanAli1/recall" className="lnk-hl text-ink-2">GitHub</a></li>
-            <li><a href="https://www.linkedin.com/" className="lnk-hl text-ink-2">LinkedIn</a></li>
-            <li><a href="/resume.pdf" className="lnk-hl text-ink-2">Resume (PDF)</a></li>
-            <li><a href="mailto:[YOUR EMAIL]" className="lnk-hl text-ink-2">Email</a></li>
+            <li><a href="https://github.com/AmaanAli1" className="lnk-hl text-ink-2">GitHub</a></li>
+            <li><a href="https://www.linkedin.com/in/amaan-ali-85967a1b1/" className="lnk-hl text-ink-2">LinkedIn</a></li>
+            {/* Not a link until the PDF exists: a link to a 404 is worse than plain text. */}
+            <li className="text-ink-3">Resume <span className="text-xs">(coming soon)</span></li>
+            <li><a href="mailto:amaan.ali99@yahoo.com" className="lnk-hl text-ink-2">Email</a></li>
           </ul>
         </nav>
       </div>

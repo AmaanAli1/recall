@@ -23,6 +23,9 @@ interface Props {
   onDelete: (doc: CourseDocument) => void;
   onUndo: () => void;
   onNavigate: (href: string) => void;
+  onRunOcr: (doc: CourseDocument) => void;
+  /** For "Ask" links, so Ask opens on this course. */
+  courseId: string;
 }
 
 /**
@@ -47,7 +50,7 @@ export function UndoBar({ undo, onUndo }: { undo: UndoState | null; onUndo: () =
 }
 
 /** Stats line, Undo bar and the ruled ledger of documents. */
-export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, onNavigate }: Props) {
+export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, onNavigate, onRunOcr, courseId }: Props) {
   const ready = docs.filter((d) => d.status === "ready");
   const busy = docs.filter((d) => d.status === "embedding").length;
   const failed = docs.filter((d) => d.status === "failed").length;
@@ -91,6 +94,8 @@ export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, on
                   onCancelDelete={() => setMenu({ docId: d.id, confirming: false })}
                   onDelete={() => onDelete(d)}
                   onNavigate={onNavigate}
+                  onRunOcr={() => onRunOcr(d)}
+                  askHref={`/ask?course=${encodeURIComponent(courseId)}`}
                 />
               );
             })}

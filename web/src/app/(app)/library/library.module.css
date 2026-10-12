@@ -72,7 +72,8 @@
 .rejOk:focus-visible .okTick { width: 14px; margin-right: 0; stroke-dashoffset: 0; color: var(--good); }
 
 /* ---------- Ledger ---------- */
-.ledgerWrap { overflow: visible; }
+/* position: relative keeps absolutely positioned bits (the sr-only "Actions" header) inside the scroll box on phones. */
+.ledgerWrap { position: relative; overflow: visible; }
 @media (max-width: 900px) { .ledgerWrap { overflow-x: auto; } }
 
 .row { transition: background-color 160ms ease; }
@@ -151,4 +152,112 @@
   .row:hover .rowN, .on .rowN, .row:hover .rowDoc { transform: none; }
   .rowAsk, .rowAsk:hover, .rowAsk:active, .more:active, .rowAsk:hover .rowAskArrow { transform: none; }
   .guard, .guardScrim, .guardCard { transition: none !important; }
+}
+
+/* ---------- Courses: colour dots, archive, "… Course" menu ---------- */
+.tabDot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+.tabArchived { opacity: 0.7; border-style: dashed; }
+.tabArchived .tabDot { opacity: 0.45; }
+.cGhost {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; color: var(--ink-2); background: transparent;
+  border: 1px solid var(--line-2); border-radius: 4px; padding: 6px 10px; min-height: 36px; cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms var(--ease-out);
+}
+.cGhost:active { transform: scale(0.97); }
+.cGhost[aria-expanded="true"], .cGhost[aria-pressed="true"] { background: var(--sheet); color: var(--ink); border-color: var(--ink-3); }
+.cMenu {
+  position: absolute; right: 0; top: calc(100% - 4px); z-index: 30; width: 252px; padding: 6px; box-sizing: border-box;
+  background: var(--sheet); border: 1px solid var(--line-2); border-radius: 6px;
+  box-shadow: 0 2px 3px rgba(70, 45, 20, 0.08), 0 18px 36px -12px rgba(70, 45, 20, 0.32);
+  transform-origin: top right; animation: menuIn 160ms var(--ease-out);
+}
+.cMi {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; min-height: 36px; border: 0; border-radius: 4px;
+  background: transparent; font: inherit; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.cMi[aria-disabled="true"] { color: var(--ink-3); cursor: not-allowed; }
+.cMi:focus-visible { background: var(--sheet-2); outline-offset: -2px; }
+.cMiDanger { color: var(--bad); }
+.cMiHint { display: block; font-size: 12px; color: var(--ink-3); }
+
+/* "Data Structures is ready." nudge */
+.nudge {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 14px; padding: 14px 16px; border-radius: 5px;
+  background: #eef5ef; box-shadow: 0 0 0 1px rgba(11, 112, 70, 0.35); animation: popIn 320ms var(--ease-out);
+}
+.nudgeX {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ink-2); cursor: pointer; transition: background-color 160ms ease, color 160ms ease;
+}
+
+/* ---------- New / Edit course dialog (native <dialog>, see CourseDialog.tsx) ---------- */
+@keyframes scrimIn { from { opacity: 0; } }
+@keyframes scrimOut { to { opacity: 0; } }
+@keyframes dlgIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
+@keyframes dlgOut { to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+.dlg {
+  width: min(540px, calc(100% - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: 10vh auto auto; padding: 0;
+  border: 0; background: transparent; color: var(--ink); overflow: visible;
+  animation: dlgIn 260ms var(--ease-out);
+}
+.dlg::backdrop { background: rgba(23, 20, 15, 0.34); animation: scrimIn 180ms ease; }
+/* Exits are quicker than entrances: once you've decided to leave, the UI shouldn't make you wait. */
+.dlgOut { pointer-events: none; animation: dlgOut 150ms cubic-bezier(0.4, 0, 1, 1) forwards; }
+.dlgOut::backdrop { animation: scrimOut 160ms ease forwards; }
+.dlgCard {
+  box-sizing: border-box; max-height: calc(100dvh - 10vh - 16px); overflow-y: auto; background: var(--sheet); border: 1px solid var(--line-2);
+  border-radius: 6px; padding: 22px 24px 20px; box-shadow: 0 2px 3px rgba(70, 45, 20, 0.08), 0 30px 60px -20px rgba(70, 45, 20, 0.45);
+}
+.dlgX {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ink-2); cursor: pointer; transition: background-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out);
+}
+.dlgX:active { transform: scale(0.92); }
+.dlgLabel { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.dlgOpt { font-weight: 400; color: var(--ink-3); }
+.dlgIn {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 6px; font: inherit; font-size: 16px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line-2); border-radius: 4px; padding: 10px 12px; min-height: 44px; outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.dlgIn:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(200, 37, 14, 0.12); }
+.dlgIn[aria-invalid="true"] { border-color: var(--bad); }
+.dlgHint { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0 0; font-size: 12px; color: var(--ink-2); }
+.dlgErr { color: var(--bad); font-weight: 500; }
+.swatch {
+  width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(23, 20, 15, 0.12);
+  transition: box-shadow 160ms ease, transform 160ms var(--ease-out);
+}
+.swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--ink); }
+.swatch:active { transform: scale(0.92); }
+.dlgDrop {
+  display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 14px; border: 1.5px dashed var(--line-2); border-radius: 5px;
+  background: var(--paper); cursor: pointer; font-size: 14px; color: var(--ink-2); transition: border-color 160ms ease, background-color 160ms ease;
+}
+.dlgDrop:focus-within { border-color: var(--red); }
+.dlgDropOn { border-color: var(--red); background: #fbefea; }
+.dlgFile { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.dlgRm {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ink-2); cursor: pointer;
+}
+.dlgDiscard { padding: 12px; border-radius: 4px; background: #fbefea; box-shadow: 0 0 0 1px rgba(200, 37, 14, 0.45); }
+.dlgCreate[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+/* On phones the dialog becomes a bottom sheet. */
+@media (max-width: 560px) {
+  .dlg { width: 100%; margin: auto 0 0; max-height: 92dvh; }
+  .dlgCard { border-radius: 10px 10px 0 0; max-height: 92dvh; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cGhost:hover { background: var(--sheet); color: var(--ink); }
+  .cMi:not([aria-disabled="true"]):hover { background: var(--sheet-2); }
+  .cMiDanger:not([aria-disabled="true"]):hover { background: #fbefea; }
+  .nudgeX:hover, .dlgX:hover { background: var(--sheet-2); color: var(--ink); }
+  .dlgDrop:hover { border-color: var(--ink-3); }
+  .dlgRm:hover { color: var(--red); background: #fbefea; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cMenu, .nudge, .dlg, .dlg::backdrop, .dlgOut, .dlgOut::backdrop { animation: none; }
 }

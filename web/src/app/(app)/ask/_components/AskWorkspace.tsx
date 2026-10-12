@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ask, listCourses, listDynoRuns, type Answer, type Course } from "@/lib/api";
-import { STARTERS } from "@/lib/api/mock-data";
+import { ask, listCourses, listDynoRuns, type Answer, type Course, type DynoRun } from "@/lib/api";
+import { COURSE_STARTERS } from "@/lib/api/mock-data";
 import { consumeFreshArrival } from "@/lib/demo-flags";
 import { redline } from "@/lib/stats";
 import { AnswerSheet, type View } from "./AnswerSheet";
@@ -12,12 +12,15 @@ import { SourcesPane } from "./SourcesPane";
 import { DEFAULT_SETTINGS, type Settings } from "./settings";
 import s from "../ask.module.css";
 
-const COURSE_ID = "algo";
+/** The course Ask opens on. Dyno's golden set is also Algorithms. */
+const DEFAULT_COURSE = "algo";
 
 export interface Glance {
   passages: number;
   recall: number | null;
   clear: boolean;
+  /** The latest Dyno run, for the "Open Dyno →" line. */
+  run: { id: string; date: string } | null;
 }
 
 /**
@@ -40,17 +43,19 @@ export function AskWorkspace() {
   const [instant, setInstant] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [glance, setGlance] = useState<Glance | null>(null);
+  const [runs, setRuns] = useState<DynoRun[]>([]);
+  // Which course questions go to. Switching course stays on Ask.
+  const [courseId, setCourseId] = useState(DEFAULT_COURSE);
 
   // Only the latest request may land; an older, slower answer is dropped.
   const reqId = useRef(0);
-  const runAsk = useCallback((question: string, animate: boolean) => {
+  const runAsk = useCallback((question: string, animate: boolean, course = courseId) => {
     const id = ++reqId.current;
     setPendingQ(question);
     setView("loading");
     setPicked(1);
     setHover(0);
-    ask(COURSE_ID, question)
+    ask(course, question)
       .then((a) => {
         if (id !== reqId.current) return;
         setAnswer(a);
@@ -60,7 +65,7 @@ export function AskWorkspace() {
       .catch(() => {
         if (id === reqId.current) setView("error");
       });
-  }, []);
+  }, [courseId]);
 
   // First visit after the demo boot opens on the starters; otherwise show the
   // first starter's answer. The ref guards against StrictMode's double effect,
@@ -70,8 +75,16 @@ export function AskWorkspace() {
     if (booted.current) return;
     booted.current = true;
     const fresh = consumeFreshArrival();
+    // /ask?course=os (from Library's "Ask about this course →") opens on that course's starters.
+    const wanted = new URLSearchParams(window.location.search).get("course");
     // Deferred a microtask: state updates belong in callbacks, not the effect body.
-    queueMicrotask(() => (fresh ? setView("empty") : runAsk(STARTERS[0].question, false)));
+    queueMicrotask(() => {
+      if (wanted && wanted !== DEFAULT_COURSE) {
+        setCourseId(wanted);
+        setView("empty");
+      } else if (fresh) setView("empty");
+      else runAsk(COURSE_STARTERS[DEFAULT_COURSE][0].question, false);
+    });
   }, [runAsk]);
 
   useEffect(() => {
@@ -80,15 +93,9 @@ export function AskWorkspace() {
       .then(([cs, runs]) => {
         if (!live) return;
         setCourses(cs);
-        const algo = cs.find((c) => c.id === COURSE_ID);
-        const passages = algo?.documents.reduce((n, d) => n + (d.passages ?? 0), 0) ?? 0;
-        const latest = runs.at(-1);
-        const base = runs[0];
-        setGlance({
-          passages,
-          recall: latest ? latest.metrics.recall : null,
-          clear: !!latest && !!base && latest.metrics.recall >= redline(base.metrics.recall),
-        });
+        setRuns(runs);
+        // An unknown or archived course in the URL falls back to the first active one.
+        setCourseId((id) => (cs.some((c) => c.id === id && !c.archived) ? id : cs.find((c) => !c.archived)?.id ?? DEFAULT_COURSE));
       })
       .catch(() => {
         /* sidebar just shows fewer details */
@@ -103,12 +110,14 @@ export function AskWorkspace() {
   useLayoutEffect(() => {
     const el = root.current;
     if (!el) return;
+    const header = document.querySelector<HTMLElement>("#top > header");
     const measure = () => {
-      const top = el.getBoundingClientRect().top + window.scrollY;
+      // Measure the header, not the workspace: the page transition briefly offsets the
+      // workspace with a transform, which would skew getBoundingClientRect.
+      const top = header ? header.getBoundingClientRect().bottom + window.scrollY : el.getBoundingClientRect().top + window.scrollY;
       el.style.setProperty("--ask-top", `${Math.round(top)}px`);
     };
     measure();
-    const header = el.parentElement?.querySelector("header");
     const ro = header ? new ResizeObserver(measure) : null;
     if (header && ro) ro.observe(header);
     window.addEventListener("resize", measure);
@@ -160,10 +169,32 @@ export function AskWorkspace() {
     else cards.current.delete(n);
   }, []);
 
-  const algo = courses.find((c) => c.id === COURSE_ID);
-  const docCount = algo?.documents.length ?? null;
+  /** Switch course without leaving Ask: drop the open answer, show that course's starters. */
+  const selectCourse = useCallback((id: string) => {
+    if (id === courseId) return;
+    reqId.current++; // a slow answer for the old course must not land
+    setCourseId(id);
+    setAnswer(null);
+    setPicked(1);
+    setHover(0);
+    setView("empty");
+  }, [courseId]);
+
+  const course = courses.find((c) => c.id === courseId);
+  const docCount = course ? course.documents.length : null;
+  const starters = COURSE_STARTERS[courseId] ?? [];
+  // Dyno evaluates the Algorithms golden set only, so recall@5 shows for that course.
+  const latest = runs.at(-1);
+  const glance: Glance | null = course
+    ? {
+        passages: course.documents.reduce((n, d) => n + (d.passages ?? 0), 0),
+        recall: courseId === DEFAULT_COURSE && latest ? latest.metrics.recall : null,
+        clear: !!latest && !!runs[0] && latest.metrics.recall >= redline(runs[0].metrics.recall),
+        run: courseId === DEFAULT_COURSE && latest ? { id: latest.id, date: latest.date } : null,
+      }
+    : null;
   // The chat matching the open answer is "current" (starters share ids with the sample chats).
-  const currentChat = view === "answer" ? STARTERS.find((q) => q.question === answer?.question)?.id ?? null : null;
+  const currentChat = view === "answer" ? starters.find((q) => q.question === answer?.question)?.id ?? null : null;
 
   const rootCls = [s.ws, instant ? s.instant : "", settings.calm ? s.calm : "", "min-h-0"].join(" ");
 
@@ -172,7 +203,8 @@ export function AskWorkspace() {
       <div className={s.row}>
         <Sidebar
           courses={courses}
-          currentCourse={COURSE_ID}
+          currentCourse={courseId}
+          onSelectCourse={selectCourse}
           currentChat={currentChat}
           glance={glance}
           onNew={newQuestion}
@@ -187,7 +219,8 @@ export function AskWorkspace() {
             pendingQ={pendingQ}
             seq={seq}
             docCount={docCount}
-            courseName={algo?.name ?? "Algorithms"}
+            courseName={course?.name ?? "Algorithms"}
+            starters={starters}
             picked={picked}
             hover={hover}
             showTiming={settings.timing}
@@ -202,7 +235,15 @@ export function AskWorkspace() {
               el.focus();
             }}
           />
-          <Composer inputRef={composerInput} busy={view === "loading"} onAsk={(q) => runAsk(q, true)} />
+          <Composer
+            inputRef={composerInput}
+            busy={view === "loading"}
+            courseName={course?.name ?? "Algorithms"}
+            sample={course?.sample ?? true}
+            empty={docCount === 0}
+            followUp={view === "answer"}
+            onAsk={(q) => runAsk(q, true)}
+          />
         </div>
 
         <SourcesPane

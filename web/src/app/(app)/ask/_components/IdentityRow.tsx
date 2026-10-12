@@ -59,7 +59,23 @@ export function IdentityRow({ settings, onSettings }: { settings: Settings; onSe
         className={`pop pop-up ${s.setPop} ${open ? "open" : ""}`}
       >
         <div className={`pop-card ${s.setCard}`}>
-          <p id="set-h" className="m-0 mb-1.5 text-[15px] font-semibold">Settings</p>
+          <div className="-mr-1.5 -mt-1 mb-1 flex items-center justify-between">
+            <p id="set-h" className="m-0 text-[15px] font-semibold">Settings</p>
+            {/* A visible way out for everyone: clicking outside isn't obvious, and keyboard users can't. */}
+            <button
+              type="button"
+              className={s.setX}
+              aria-label="Close settings"
+              onClick={() => {
+                setOpen(false);
+                gear.current?.focus();
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
 
           <div className={s.setRow}>
             <span>

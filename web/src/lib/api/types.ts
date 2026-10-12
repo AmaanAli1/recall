@@ -27,18 +27,38 @@ export interface CourseDocument {
   status: DocumentStatus;
   /** Embedding progress 0–100 while status is "embedding". */
   progress?: number;
+  /** What "embedding" is doing right now: reading a scan (OCR) or embedding passages. */
+  stage?: "ocr" | "embed";
   /** Display label for when it was added, e.g. "Oct 2" or "Today". */
   added: string;
   /** Why it failed, when status is "failed". */
   error?: string;
 }
 
+/** Muted course colours, so they never compete with the red accent. */
+export type CourseColor = "blue" | "teal" | "green" | "ochre" | "rust" | "plum";
+
 export interface Course {
   id: string;
   name: string;
+  /** Optional short code shown before the name, e.g. "CP213". */
+  code?: string;
+  /** Optional term, e.g. "Fall 2026". */
+  term?: string;
+  color: CourseColor;
+  /** Archived courses are hidden from Ask and the tabs, but keep their PDFs. */
+  archived?: boolean;
   /** Sample courses ship with every demo session and are read-only. */
   sample: boolean;
   documents: CourseDocument[];
+}
+
+/** What the "New course" / "Edit course" dialog sends. */
+export interface CourseInput {
+  name: string;
+  code?: string;
+  term?: string;
+  color: CourseColor;
 }
 
 export interface Source {
@@ -69,8 +89,12 @@ export interface Answer {
 
 export interface ChatSummary {
   id: string;
+  /** Chats belong to one course; Ask shows the open course's chats. */
+  courseId: string;
   title: string;
   group: "Today" | "This week" | "Earlier";
+  /** Pinned chats sit in a "Pinned" group at the top. */
+  pinned?: boolean;
 }
 
 export type MetricKey = "recall" | "mrr" | "faith" | "correct" | "relev";
@@ -85,7 +109,28 @@ export interface DynoRun {
   p95: number;
   /** Number of golden questions evaluated. */
   n: number;
+  /** The full setup, shown in the run's Details panel (what MLflow logs as params). */
+  config?: RunConfig;
 }
+
+/** One run's setup. `changed` names the one setting this run changed from the run before. */
+export interface RunConfig {
+  chunking: string;
+  retrieval: string;
+  topK: number;
+  reranker: string;
+  rewriting: string;
+  prompt: string;
+  embedModel: string;
+  answerModel: string;
+  judgeModel: string;
+  commit: string;
+  durationS: number;
+  costUsd: number;
+  changed: RunSetting[];
+}
+
+export type RunSetting = "chunking" | "retrieval" | "topK" | "reranker" | "rewriting" | "prompt";
 
 /** Progress events streamed while a Dyno run is in flight. */
 export interface DynoProgress {

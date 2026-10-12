@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, useRef, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import type { CourseDocument } from "@/lib/api";
+import { useFloating } from "@/lib/use-floating";
 import s from "../library.module.css";
 
 const ICON = {
@@ -38,10 +40,13 @@ export interface DocumentRowProps {
   onDelete: () => void;
   /** Navigate through the page's leave guard (menu items aren't links). */
   onNavigate: (href: string) => void;
+  /** Read a scanned PDF into text (OCR), then embed it. */
+  onRunOcr: () => void;
+  askHref: string;
 }
 
 /** One ledger line: margin number, dog-eared icon, status, and the actions menu. */
-export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onCloseMenu, onConfirmDelete, onCancelDelete, onDelete, onNavigate }: DocumentRowProps) {
+export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onCloseMenu, onConfirmDelete, onCancelDelete, onDelete, onNavigate, onRunOcr, askHref }: DocumentRowProps) {
   const ready = doc.status === "ready";
   const busy = doc.status === "embedding";
   const failed = doc.status === "failed";
@@ -49,12 +54,15 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
   const passages = doc.passages ?? "—";
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  // The sheet's dog-ear is a clip-path, which clips anything hanging outside it,
+  // so the menu renders in a portal and is placed next to its button (flips up if needed).
+  const pos = useFloating(trigger, menu, menuOpen, confirming, -2);
 
-  // TODO(backend): Run OCR, Open, Rename, Re-embed/Cancel, Move and Download need endpoints; for now they just close the menu.
+  // TODO(backend): Open, Rename, Re-embed/Cancel, Move and Download need endpoints; for now they just close the menu.
   const items: MenuItem[] = [];
-  if (failed) items.push({ label: "Run OCR", icon: "ocr", run: onCloseMenu });
+  if (failed) items.push({ label: "Run OCR", icon: "ocr", run: () => { onCloseMenu(); onRunOcr(); } });
   items.push({ label: "Open PDF", icon: "open", run: onCloseMenu });
-  if (ready) items.push({ label: "Ask about this document", icon: "ask", run: () => { onCloseMenu(); onNavigate("/ask"); } });
+  if (ready) items.push({ label: "Ask about this document", icon: "ask", run: () => { onCloseMenu(); onNavigate(askHref); } });
   items.push({ label: "Rename", icon: "rename", run: onCloseMenu });
   if (busy) items.push({ label: "Cancel processing", icon: "cancel", run: onCloseMenu });
   else items.push({ label: "Re-embed passages", icon: "reembed", run: onCloseMenu });
@@ -120,11 +128,11 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
         {busy && (
           <span className="flex flex-col gap-[7px]">
             <span className="text-sm">
-              Embedding passages… <span className="font-mono">{pct}%</span>
+              {doc.stage === "ocr" ? "Reading scanned pages (OCR)…" : "Embedding passages…"} <span className="font-mono">{pct}%</span>
             </span>
             <span
               role="progressbar"
-              aria-label={`Embedding ${doc.name}`}
+              aria-label={`${doc.stage === "ocr" ? "Running OCR on" : "Embedding"} ${doc.name}`}
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
@@ -153,7 +161,7 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
         <span className="inline-flex items-center justify-end gap-2">
           {ready && (
             <Link
-              href="/ask"
+              href={askHref}
               aria-label={`Ask about ${doc.name}`}
               className={`${s.rowAsk} box-border inline-flex min-h-9 items-center gap-1.5 rounded border border-line-2 bg-sheet px-3 py-[7px] text-sm font-medium text-red`}
             >
@@ -165,8 +173,12 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
             </Link>
           )}
           {failed && (
-            // TODO(backend): start OCR for this document.
-            <button type="button" className="btn btn-red min-h-9 rounded border-0 px-3 py-[7px] text-[13px] font-medium">
+            <button
+              type="button"
+              onClick={onRunOcr}
+              aria-label={`Run OCR on ${doc.name}`}
+              className="btn btn-red min-h-9 rounded border-0 px-3 py-[7px] text-[13px] font-medium"
+            >
               Run OCR
             </button>
           )}
@@ -186,13 +198,15 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
             </svg>
           </button>
         </span>
-        {menuOpen && (
+        {menuOpen && createPortal(
           <div
             ref={menu}
             role="menu"
+            data-menu-root=""
             aria-label={`More actions for ${doc.name}`}
             onKeyDown={onMenuKey}
-            className={`${s.menu} absolute right-0 top-[calc(100%_-_8px)] z-20 box-border w-[248px] whitespace-normal rounded-md border border-line-2 bg-sheet p-1.5 text-left shadow-[0_2px_3px_rgba(70,45,20,0.08),0_18px_36px_-12px_rgba(70,45,20,0.32)]`}
+            style={pos.style}
+            className={`${s.menu} z-40 box-border w-[248px] whitespace-normal rounded-md border border-line-2 bg-sheet p-1.5 text-left shadow-[0_2px_3px_rgba(70,45,20,0.08),0_18px_36px_-12px_rgba(70,45,20,0.32)]`}
           >
             {confirming ? (
               <div className="px-2 pb-1.5 pt-2">
@@ -236,7 +250,8 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
                 </Fragment>
               ))
             )}
-          </div>
+          </div>,
+          document.body,
         )}
       </td>
     </tr>
