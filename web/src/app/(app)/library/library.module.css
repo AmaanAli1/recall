@@ -1,0 +1,154 @@
+/* Library screen styles, ported from Library-Final.dc.html.
+   Shared pieces (btn, btn-red, btn-ghost, sheet, ear, fold, kbd, rise…) live in globals.css. */
+
+/* ---------- Binder index tabs ---------- */
+.earTab { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+.tab {
+  position: relative; border: 1px solid var(--line-2); border-bottom: 0; border-radius: 0;
+  min-height: 44px; font-size: 15px;
+  transform-origin: bottom center;
+  transition: transform 240ms var(--ease-out), background-color 200ms ease, color 160ms ease, box-shadow 240ms var(--ease-out);
+}
+.tab .tabCount { font-family: var(--font-mono); font-size: 12px; margin-left: 4px; transition: color 160ms ease; }
+/* The open tab sits 2px into the sheet so it reads as the front page of the binder. */
+.tabOn { padding: 13px 22px 14px; font-weight: 500; color: var(--ink); background: var(--sheet); margin-bottom: -2px; z-index: 2; }
+.tabOn .tabCount { color: var(--red); }
+.tabOff { padding: 10px 18px 11px; font-weight: 400; color: var(--ink-2); background: var(--sheet-2); margin-bottom: 0; z-index: 1; }
+.tabOff .tabCount { color: var(--ink-3); }
+@media (hover: hover) and (pointer: fine) {
+  .tabOff:hover { transform: translateY(-5px); background-color: var(--sheet); color: var(--ink); box-shadow: 0 -6px 14px -8px rgba(70, 45, 20, 0.35); }
+  .tabOff:hover .tabCount { color: var(--red); }
+}
+.tabOff:focus-visible { transform: translateY(-5px); background-color: var(--sheet); color: var(--ink); }
+.tabOff:active { transform: translateY(-2px) scale(0.98); }
+
+/* ---------- Drop zone ---------- */
+.drop {
+  border: 1.5px dashed var(--line-2); background: var(--paper);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 200ms var(--ease-out);
+}
+.dragOk { border-style: solid; border-color: var(--red); background: #fcf6f2; box-shadow: 0 0 0 4px rgba(200, 37, 14, 0.1); }
+.dragBad {
+  border-color: var(--bad); cursor: no-drop;
+  background: repeating-linear-gradient(-45deg, rgba(200, 37, 14, 0.05) 0 10px, transparent 10px 20px), var(--paper);
+}
+/* Two identical keyframes so alternating the class restarts the shake on every rejection. */
+@keyframes nope { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes nope2 { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.shakeA { animation: nope 340ms var(--ease-out); }
+.shakeB { animation: nope2 340ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .drop:not(.dragBad):hover { border-color: var(--red); background: #fcf6f2; }
+}
+.fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+
+/* ---------- Rejection slip (height collapse via grid rows) ---------- */
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+.clip { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s linear 220ms; }
+.slide { opacity: 0; transform: translateY(-6px); transition: opacity 150ms ease, transform 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+.collapse.open { grid-template-rows: 1fr; transition-duration: 300ms; transition-timing-function: var(--ease-out); }
+.collapse.open > .clip { visibility: visible; transition-delay: 0s; }
+.collapse.open > .clip > .slide { opacity: 1; transform: none; transition: opacity 200ms ease 50ms, transform 300ms var(--ease-out); }
+
+/* "Got it": highlighter sweep + a check mark that draws itself in. */
+.rejOk { background: transparent; transition: transform 160ms var(--ease-out), color 160ms ease, border-color 160ms ease, background-color 160ms ease; }
+.rejOk:active { transform: scale(0.97); }
+.okWord {
+  background-image: linear-gradient(180deg, transparent 56%, var(--hl) 56%, var(--hl) 92%, transparent 92%);
+  background-repeat: no-repeat; background-size: 0% 100%; transition: background-size 240ms var(--ease-out);
+}
+.okTick {
+  flex: none; width: 0; margin-right: -8px; stroke-dasharray: 24; stroke-dashoffset: 24;
+  transition: width 200ms var(--ease-out), margin-right 200ms var(--ease-out), stroke-dashoffset 260ms var(--ease-out) 60ms, color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rejOk:hover { color: var(--ink); border-color: var(--line-2); background-color: var(--sheet); }
+  .rejOk:hover .okWord { background-size: 100% 100%; }
+  .rejOk:hover .okTick { width: 14px; margin-right: 0; stroke-dashoffset: 0; color: var(--good); }
+  .iconBtn:hover { background: var(--sheet-2); color: var(--ink); }
+}
+.rejOk:focus-visible { color: var(--ink); }
+.rejOk:focus-visible .okWord { background-size: 100% 100%; }
+.rejOk:focus-visible .okTick { width: 14px; margin-right: 0; stroke-dashoffset: 0; color: var(--good); }
+
+/* ---------- Ledger ---------- */
+.ledgerWrap { overflow: visible; }
+@media (max-width: 900px) { .ledgerWrap { overflow-x: auto; } }
+
+.row { transition: background-color 160ms ease; }
+.failed { background: rgba(200, 37, 14, 0.045); }
+.rowN { color: var(--ink-3); display: inline-block; transition: color 160ms ease, transform 200ms var(--ease-out); }
+.rowDoc { transition: transform 220ms var(--ease-out); }
+.rowName {
+  background-image: linear-gradient(180deg, transparent 58%, var(--hl) 58%, var(--hl) 92%, transparent 92%);
+  background-repeat: no-repeat; background-size: 0% 100%; transition: background-size 260ms var(--ease-out);
+}
+/* A row whose menu is open keeps its hover look so you can see which document the menu belongs to. */
+.on { background: #f4eee3; }
+.on .rowN { color: var(--red); transform: translateX(-3px); }
+@media (hover: hover) and (pointer: fine) {
+  .row:hover { background: #f4eee3; }
+  .row.failed:hover { background: rgba(200, 37, 14, 0.08); }
+  .row:hover .rowN { color: var(--red); transform: translateX(-3px); }
+  .row:hover .rowDoc { transform: translateY(-2px) rotate(-4deg); }
+  .row:hover .rowName { background-size: 100% 100%; }
+}
+.row:focus-within .rowN { color: var(--red); }
+
+.rowAsk {
+  background-image: linear-gradient(180deg, transparent 14%, var(--hl) 14%, var(--hl) 86%, transparent 86%);
+  background-repeat: no-repeat; background-size: 0% 100%;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), background-size 260ms var(--ease-out), border-color 160ms ease;
+}
+.rowAskArrow { transition: transform 200ms var(--ease-out); }
+.more { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out); }
+.moreOpen { background-color: var(--ink); color: var(--paper); border-color: var(--ink); }
+.mi { transition: background-color 120ms ease, color 120ms ease; }
+.miDanger { color: var(--bad); }
+.undo { transition: background-color 160ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  .rowAsk:hover { background-size: 100% 100%; border-color: var(--red); transform: translateY(-2px); box-shadow: 0 8px 14px -8px rgba(70, 45, 20, 0.35); }
+  .rowAsk:hover .rowAskArrow { transform: translateX(3px); }
+  .more:not(.moreOpen):hover { border-color: var(--ink-3); background-color: var(--sheet-2); }
+  .mi:hover { background: var(--sheet-2); }
+  .miDanger:hover { background: #fbefea; }
+  .undo:hover { background: rgba(255, 255, 255, 0.12); }
+}
+.rowAsk:focus-visible { background-size: 100% 100%; border-color: var(--red); }
+.mi:focus-visible { background: var(--sheet-2); outline-offset: -2px; }
+.rowAsk:active, .more:active { transform: scale(0.96); }
+
+@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+.menu { transform-origin: top right; animation: menuIn 160ms var(--ease-out); }
+@keyframes popIn { from { opacity: 0; transform: translateY(-4px); } }
+.popIn { animation: popIn 200ms var(--ease-out); }
+
+/* ---------- Leave guard ---------- */
+.guard {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center;
+  padding: 96px 16px 16px; visibility: hidden; pointer-events: none; transition: visibility 0s linear 180ms;
+}
+.guard.open { visibility: visible; pointer-events: auto; transition: none; }
+.guardScrim { position: absolute; inset: 0; background: rgba(23, 20, 15, 0.28); opacity: 0; transition: opacity 180ms ease; }
+.guard.open .guardScrim { opacity: 1; transition-duration: 220ms; }
+.guardCard {
+  position: relative; width: min(440px, 100%); box-sizing: border-box; background: var(--sheet);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 22px 22px 18px;
+  filter: drop-shadow(0 2px 2px rgba(70, 45, 20, 0.08)) drop-shadow(0 24px 40px rgba(70, 45, 20, 0.24));
+  opacity: 0; transform: translateY(-6px) scale(0.97); transform-origin: top center;
+  transition: opacity 140ms ease, transform 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.guard.open .guardCard { opacity: 1; transform: none; transition: opacity 180ms ease, transform 260ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .guardLeave:hover { color: var(--red); border-color: var(--red); }
+}
+
+/* Motion off: no lifts, shakes or slides. (globals.css already shortens every duration.) */
+@media (prefers-reduced-motion: reduce) {
+  .tab, .tabOff:hover, .tabOff:focus-visible, .tabOff:active { transform: none; }
+  .shakeA, .shakeB, .menu, .popIn { animation: none; }
+  .collapse, .clip, .slide, .okWord, .okTick, .row, .rowN, .rowDoc, .rowName { transition: none; }
+  .row:hover .rowN, .on .rowN, .row:hover .rowDoc { transform: none; }
+  .rowAsk, .rowAsk:hover, .rowAsk:active, .more:active, .rowAsk:hover .rowAskArrow { transform: none; }
+  .guard, .guardScrim, .guardCard { transition: none !important; }
+}
