@@ -1,0 +1,202 @@
+/* Ask workspace. Ported from Ask-Final; values (timings, easing, sizes) match the design. */
+
+/* ---------- Workspace frame ---------- */
+.ws { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; }
+.row { position: relative; display: flex; flex-wrap: wrap; flex: 1 1 auto; }
+
+.paneLeft { flex: 0 0 264px; width: 264px; min-width: 0; box-sizing: border-box; padding: 22px 14px 18px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; }
+.paneMain { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; }
+.paneRight { flex: 0 0 384px; width: 384px; min-width: 0; box-sizing: border-box; padding: 26px 24px 24px 40px; border-left: 1px solid var(--line); }
+
+@media (max-width: 1080px) {
+  .paneRight { flex: 1 1 100%; width: auto; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 760px) {
+  .paneLeft { flex: 1 1 100%; width: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 520px) {
+  .article { margin: 20px 16px 0 !important; }
+  .ruled { padding: 28px 20px 26px 56px !important; }
+  .margin { left: 40px !important; }
+  .qMark { left: 12px !important; }
+  .aMark { left: -44px !important; }
+  .composer { padding: 16px 16px 26px !important; }
+  .paneRight { padding: 26px 16px 24px; }
+}
+
+/*
+ * Fixed-height panes on wide screens so nothing in one column can push the composer:
+ * only the chat list, the answer sheet and the sources pane scroll.
+ * --ask-top is the header height, measured by the workspace (header lives in the layout).
+ */
+@media (min-width: 1081px) {
+  .ws { height: max(900px, calc(100dvh - var(--ask-top, 62px))); overflow: hidden; flex: none; }
+  .row { flex: 1 1 0; min-height: 0; flex-wrap: nowrap; }
+  .paneLeft, .paneRight, .paneMain { min-height: 0; max-height: 100%; }
+  .paneRight { overflow-y: auto; overscroll-behavior: contain; }
+  .chatScroll { flex: 1 1 0 !important; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px; padding: 0 6px; scrollbar-gutter: stable; }
+  .article { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
+.chatScroll, .paneRight, .article { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+
+/* "Reduce motion" setting: kill every transition/animation inside the workspace. */
+.calm *, .calm *::before, .calm *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-delay: 0s !important; }
+
+/* ---------- Left pane ---------- */
+.courseNum { font-family: var(--font-mono); font-size: 12px; }
+
+.sideL, .chatLink, .iconBtn, .chatDel {
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms var(--ease-out), opacity 160ms ease;
+}
+.chatRow, .chatLink { min-width: 0; }
+.chatRow { position: relative; margin: 1px 0; }
+.chatLink { display: block; padding: 8px 40px 8px 10px; border-radius: 4px; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.chatLink[aria-current="true"] { color: var(--ink); font-weight: 500; background: var(--sheet-2); }
+.chatDel {
+  position: absolute; right: 4px; top: 50%; margin-top: -16px; width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ink-2); opacity: 0;
+}
+.chatRow:focus-within .chatDel, .chatDel:focus-visible { opacity: 1; }
+@media (hover: none) { .chatDel { opacity: 1; } }
+
+.undoBar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; padding: 8px 10px; border-radius: 4px; background: var(--ink); color: var(--paper); font-size: 13px; }
+.undo { background: transparent; border: 0; color: #ffb4a6; font-weight: 600; font-size: 13px; padding: 4px 6px; min-height: 32px; border-radius: 3px; }
+
+.confirm { margin: 2px 0; padding: 10px; border-radius: 4px; background: #fbefea; box-shadow: 0 0 0 1px var(--red); }
+
+/* Identity row badge with the live dot */
+.badge {
+  position: relative; width: 34px; height: 34px; flex: 0 0 auto; box-sizing: border-box; border-radius: 9px;
+  border: 1.5px dashed var(--ink-3); background: var(--sheet); color: var(--ink);
+  display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+}
+.badgeDot { position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--paper); }
+
+.iconBtn { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); }
+
+/* ---------- Settings popover ---------- */
+.setPop:global(.pop) { width: min(300px, calc(100vw - 32px)); }
+.setCard:global(.pop-card) { padding: 16px 16px 10px; }
+.setRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.setRow:last-child { border-bottom: 0; }
+.seg { flex: none; display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--paper); }
+.segB { font: inherit; font-size: 12px; border: 0; border-radius: 3px; padding: 5px 8px; background: transparent; color: var(--ink-2); cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
+.segB[aria-checked="true"] { background: var(--ink); color: var(--paper); font-weight: 500; }
+.sw { flex: none; position: relative; width: 36px; height: 22px; border-radius: 11px; border: 0; padding: 0; background: var(--line-2); cursor: pointer; transition: background-color 180ms ease; }
+.sw[aria-checked="true"] { background: var(--red); }
+.swK { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(23, 20, 15, 0.3); transition: transform 200ms var(--ease-out); }
+.sw[aria-checked="true"] .swK { transform: translateX(14px); }
+.sw:active .swK { width: 19px; }
+.sw[aria-checked="true"]:active .swK { transform: translateX(11px); }
+.setBtn svg { transition: transform 300ms var(--ease-out); }
+.setBtn[aria-expanded="true"] { color: var(--ink); background: var(--sheet-2); }
+.setBtn[aria-expanded="true"] svg { transform: rotate(60deg); }
+
+/* ---------- Answer sheet ---------- */
+.article { flex: 1 1 auto; margin: 28px 28px 0; }
+.ruled {
+  position: relative; min-height: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 4px;
+  background-color: var(--sheet); background-image: repeating-linear-gradient(180deg, transparent 0 35px, var(--rule) 35px 36px);
+  padding: 36px 36px 30px 76px;
+}
+.margin { position: absolute; left: 54px; top: 0; bottom: 0; width: 1px; background: var(--margin); }
+.qMark { position: absolute; left: 22px; top: 38px; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--red); }
+.aMark { position: absolute; left: -54px; top: 2px; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--red); }
+
+.h1 { margin: 0; font-weight: 400; font-size: 30px; line-height: 36px; letter-spacing: -0.022em; }
+
+/* Starter question chips with a highlighter sweep */
+.starter {
+  display: inline-flex; align-items: center; gap: 12px; max-width: 100%; text-align: left; font: inherit; font-size: 17px; line-height: 1.4;
+  color: var(--ink); background: var(--sheet); border: 1px solid var(--line-2); border-radius: 5px; padding: 9px 14px; cursor: pointer;
+  transition: border-color 160ms ease, transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+.starterQ {
+  background-image: linear-gradient(180deg, transparent 58%, var(--hl) 58%, var(--hl) 92%, transparent 92%);
+  background-repeat: no-repeat; background-size: 0% 100%; transition: background-size 260ms var(--ease-out);
+}
+.starterGo { font-family: var(--font-mono); color: var(--red); opacity: 0.5; transition: transform 200ms var(--ease-out), opacity 160ms ease; }
+.starter:active { transform: scale(0.98); }
+.starter:focus-visible .starterQ { background-size: 100% 100%; }
+
+/* Claims and their [n] chips */
+.claim {
+  background-image: linear-gradient(180deg, transparent 58%, var(--hl) 58%, var(--hl) 90%, transparent 90%);
+  background-repeat: no-repeat; background-size: 0% 100%; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  transition: background-size 360ms var(--ease-out), text-decoration-color 160ms ease;
+  text-decoration: underline dotted; text-decoration-color: transparent; text-underline-offset: 6px;
+}
+.claimOn { background-size: 100% 100%; }
+.claimPeek { text-decoration-color: var(--ink-3); }
+.cite {
+  font-family: var(--font-mono); font-size: 14px; line-height: 1; padding: 4px 3px; border: 0; border-radius: 2px;
+  color: var(--red); font-weight: 400; background: transparent;
+  transition: background-color 160ms ease, transform 160ms var(--ease-out);
+}
+.cite:active { transform: scale(0.94); }
+.citePeek { background: var(--sheet-2); }
+.citeOn { background: var(--hl); font-weight: 500; }
+
+.timingOff { display: none; }
+
+/* Loading lines while an answer is on its way */
+@keyframes breathe { 50% { opacity: 0.45; } }
+.skel { display: block; height: 12px; margin: 12px 0 0; border-radius: 3px; background: var(--sheet-2); animation: breathe 1.2s ease-in-out infinite; }
+
+/* Entrance animations */
+@keyframes ansIn { from { opacity: 0; transform: translateY(6px); } }
+.ansIn { animation: ansIn 360ms var(--ease-out); }
+@keyframes swapIn { from { opacity: 0; transform: translateY(-4px); } }
+.swapIn { animation: swapIn 200ms var(--ease-out); }
+
+/* ---------- Sources ---------- */
+.card { transition: transform 200ms var(--ease-out); display: block; width: 100%; text-align: left; border: 0; color: var(--ink); padding: 16px 18px; background: var(--sheet); }
+.card:active { transform: scale(0.99); }
+.peek { filter: drop-shadow(0 1px 1px rgba(70, 45, 20, 0.08)) drop-shadow(0 14px 24px rgba(70, 45, 20, 0.16)); }
+.peek .card { transform: translateY(-2px); }
+.edge { padding: 1px; background: var(--line-2); }
+.edgeOn { background: var(--red); }
+.srcBody { display: block; margin-top: 10px; font-size: 14px; line-height: 1.7; font-weight: 400; color: var(--ink-2); }
+.srcBodyOn { color: var(--ink); }
+.swipe {
+  background-color: transparent; color: var(--ink);
+  background-image: linear-gradient(180deg, transparent 50%, var(--hl) 50%, var(--hl) 94%, transparent 94%);
+  background-repeat: no-repeat; background-size: 100% 100%; animation: swipe 300ms var(--ease-out) 140ms backwards;
+}
+@keyframes swipe { from { background-size: 0% 100%; } }
+/* Keyboard picks jump straight there: no sweep, no slide. */
+.instant .claim, .instant .card { transition: none; }
+.instant .swipe { animation: none; }
+
+.dashed { border: 1.5px dashed var(--line-2); border-radius: 6px; padding: 22px 20px; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+
+/* ---------- Hover (real pointers only) ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .sideL:hover, .chatRow:hover .chatLink {
+    background: var(--sheet); color: var(--ink); transform: translateX(2px);
+    box-shadow: 0 0 0 1px var(--line-2), 0 6px 12px -8px rgba(70, 45, 20, 0.35);
+  }
+  .chatRow:hover .chatDel { opacity: 1; }
+  .chatDel:hover { color: var(--red); background: #fbefea; }
+  .iconBtn:hover { color: var(--ink); background: var(--sheet-2); }
+  .undo:hover { background: rgba(255, 255, 255, 0.12); }
+  .segB[aria-checked="false"]:hover { color: var(--ink); background: var(--sheet-2); }
+  .starter:hover { border-color: var(--red); transform: translateY(-1px); box-shadow: 0 8px 16px -10px rgba(70, 45, 20, 0.4); }
+  .starter:hover .starterQ { background-size: 100% 100%; }
+  .starter:hover .starterGo { opacity: 1; transform: translateX(3px); }
+  .cite:hover { background: var(--sheet-2); }
+  .citeOn:hover { background: var(--hl); }
+  .card:hover { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe, .ansIn, .swapIn, .skel { animation: none; }
+  .claim, .starter, .starterQ, .starterGo, .setPop, .sw, .swK, .setBtn svg { transition: none; }
+  .cite:active, .card:active, .starter:active { transform: none; }
+  .peek .card { transform: none; }
+  .sideL, .chatLink { transform: none !important; }
+}
+@media (prefers-reduced-motion: reduce) and (hover: hover) {
+  .card:hover { transform: none; }
+}

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
+import { AskWorkspace } from "./_components/AskWorkspace";
 
 export const metadata: Metadata = { title: "Ask" };
 
-// Placeholder until feat/ask lands.
+/** Ask: question → cited answer, with the sources it came from alongside. */
 export default function Page() {
   return (
-    <main id="main" className="relative mx-auto w-full max-w-[1200px] flex-1 px-6 py-14">
-      <h1 className="text-[54px] font-normal leading-tight tracking-[-0.036em]">Ask</h1>
-      <p className="mt-3 text-ink-2">This screen is being built.</p>
+    <main id="main" className="relative flex min-h-0 w-full flex-1 flex-col">
+      <AskWorkspace />
     </main>
   );
 }
