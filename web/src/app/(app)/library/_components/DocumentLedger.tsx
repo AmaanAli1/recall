@@ -63,7 +63,7 @@ export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, on
       </div>
       <UndoBar undo={undo} onUndo={onUndo} />
       {/* Pulled into the left margin so the row numbers sit beside the red margin line. */}
-      <div className={`${s.ledgerWrap} -ml-[76px] pl-[76px]`}>
+      <div className={`${s.ledgerWrap} -ml-12 pl-12 sm:-ml-[76px] sm:pl-[76px]`}>
         <table className="num w-full min-w-[780px] border-collapse text-[15px]">
           <thead>
             <tr className="text-left text-xs text-ink-2">

@@ -32,7 +32,8 @@
   color: var(--chip); border: 1px solid var(--chip);
 }
 .good { --chip: var(--good); }
-.bad { --chip: var(--bad); }
+/* Darker red so the "Redline" chip passes 4.5:1 on the tinted failed row. */
+.bad { --chip: var(--red-press); }
 .mid { --chip: var(--mid); }
 .neutral { --chip: var(--ink-2); }
 .badFill { background: rgba(200, 37, 14, 0.07); }
