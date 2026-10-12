@@ -1,0 +1,132 @@
+/* Dyno page styles, ported from the approved canvas. Layout lives in Tailwind classes;
+   this file holds stateful classes, transitions and SVG behaviour. */
+
+/* ---------- runs table rows (hover is state-driven so the chart can light a row too) ---------- */
+.row { transition: background-color 140ms ease; }
+.row.fail { background: rgba(200, 37, 14, 0.05); }
+.row.cmp { background: rgba(23, 20, 15, 0.035); }
+.row.live { background: rgba(138, 86, 5, 0.06); }
+.row > th:first-child { box-shadow: inset 0 0 0 transparent; transition: box-shadow 160ms var(--ease-out); }
+.row.on { background: #f1ebdf; }
+.row.fail.on { background: rgba(200, 37, 14, 0.1); }
+.row.on > th:first-child { box-shadow: inset 3px 0 0 var(--red); }
+
+.runId {
+  background-image: linear-gradient(180deg, transparent 58%, var(--hl) 58%, var(--hl) 92%, transparent 92%);
+  background-repeat: no-repeat; background-size: 0% 100%;
+  transition: background-size 240ms var(--ease-out);
+}
+.row.on .runId { background-size: 100% 100%; }
+
+/* MLflow link: revealed with its row, or when focused; always visible on touch. */
+.mlf { opacity: 0; transition: opacity 160ms ease, color 160ms ease; }
+.row.on .mlf, .mlf:focus-visible { opacity: 1; }
+@media (hover: none) { .mlf { opacity: 1; } }
+
+.dlt { display: inline-block; min-width: 3.6em; margin-left: 8px; font-size: 12px; text-align: right; }
+
+/* ---------- chips ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500;
+  padding: 4px 10px; border-radius: 3px; white-space: nowrap;
+  color: var(--chip); border: 1px solid var(--chip);
+}
+.good { --chip: var(--good); }
+.bad { --chip: var(--bad); }
+.mid { --chip: var(--mid); }
+.neutral { --chip: var(--ink-2); }
+.badFill { background: rgba(200, 37, 14, 0.07); }
+.midFill { background: rgba(138, 86, 5, 0.07); }
+
+.tagA, .tagB {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+  border-radius: 3px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; vertical-align: 1px;
+}
+.tagA { background: var(--red); color: #fff; }
+.tagB { background: var(--ink); color: var(--paper); }
+
+/* ---------- trend chart ---------- */
+.pt {
+  transform-box: fill-box; transform-origin: center;
+  transition: transform 200ms var(--ease-out), cy 420ms var(--ease-out), fill 160ms ease;
+}
+.pt.on { transform: scale(1.5); fill: var(--red); }
+.guide { opacity: 0; transition: opacity 160ms ease; }
+.guide.on { opacity: 1; }
+/* Paths morph between metric tabs; the polyline's `points` cannot transition, so it snaps. */
+.morph { transition: d 420ms var(--ease-out); }
+polyline.morph { transition: none; }
+.ring { transition: opacity 160ms ease; }
+.tip { transition: opacity 120ms ease; }
+
+.mtab {
+  font: inherit; font-size: 13px; border: 0; border-radius: 3px; padding: 6px 10px; cursor: pointer;
+  background: transparent; color: var(--ink-2);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.mtab[aria-pressed="true"] { background: var(--ink); color: var(--paper); font-weight: 500; }
+
+/* ---------- gauges ---------- */
+.nwrap { transform-box: view-box; transform-origin: 100px 100px; transition: transform 700ms cubic-bezier(0.34, 1.32, 0.64, 1); }
+.gval { transition: d 700ms var(--ease-out); }
+.ghost { transform-box: view-box; transform-origin: 100px 100px; transition: transform 260ms var(--ease-out), opacity 200ms ease; }
+@keyframes needle { from { transform: rotate(-120deg); } }
+.needle { transform-box: view-box; transform-origin: 100px 100px; animation: needle 760ms cubic-bezier(0.34, 1.32, 0.64, 1) backwards; }
+
+/* ---------- run panel ---------- */
+.progTrack { height: 6px; border-radius: 3px; background: var(--sheet-2); overflow: hidden; }
+.progFill { height: 100%; background: var(--red); transition: width 110ms linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--red); animation: spin 800ms linear infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+.blink { animation: blink 1.2s ease-in-out infinite; }
+
+/* ---------- small buttons ---------- */
+.xBtn, .swap {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 4px;
+  border: 1px solid var(--line-2); background: var(--sheet); color: var(--ink-2); cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out);
+}
+.xBtn { border-color: transparent; }
+.xBtn:active, .swap:active { transform: scale(0.94); }
+
+.pill {
+  font: inherit; font-family: var(--font-mono); font-size: 13px; border-radius: 4px; padding: 7px 10px; min-height: 34px; cursor: pointer;
+  border: 1px solid var(--line-2); background: var(--sheet); color: var(--ink-2);
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms var(--ease-out);
+}
+.pill:active { transform: scale(0.96); }
+.pillA[aria-pressed="true"] { border-color: var(--red); background: var(--red); color: #fff; }
+.pillB[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+
+.lnkBtn {
+  font: inherit; font-size: 13px; color: var(--ink-2); background: none; border: 0; padding: 8px 4px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; transition: color 160ms ease;
+}
+
+/* ---------- collapse (run + compare panels) ----------
+   Animates grid rows 0fr → 1fr so the panel's real height is used; visibility flips
+   after the close finishes so hidden content leaves the tab order. */
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms cubic-bezier(0.4, 0, 0.2, 1); }
+.clip { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s linear 240ms; }
+.slide {
+  opacity: 0; transform: translateY(-8px) scale(0.99); transform-origin: top center;
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.collapse.open { grid-template-rows: 1fr; transition-duration: 320ms; transition-timing-function: var(--ease-out); }
+.collapse.open > .clip { visibility: visible; transition-delay: 0s; overflow: clip; overflow-clip-margin: 24px; }
+.collapse.open > .clip > .slide { opacity: 1; transform: none; transition: opacity 220ms ease 60ms, transform 320ms var(--ease-out); }
+
+@media (hover: hover) and (pointer: fine) {
+  .mlf:hover { color: var(--red); }
+  .mtab[aria-pressed="false"]:hover { background: var(--sheet-2); color: var(--ink); }
+  .xBtn:hover, .swap:hover { background: var(--sheet-2); color: var(--ink); }
+  .lnkBtn:hover { color: var(--red); }
+  .pill[aria-pressed="false"]:hover { border-color: var(--ink-2); color: var(--ink); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row, .row > th:first-child, .runId, .mlf, .pt, .guide, .morph, .mtab,
+  .nwrap, .gval, .ghost, .progFill, .collapse, .clip, .slide { transition: none; }
+  .spin, .blink, .needle { animation: none; }
+}
