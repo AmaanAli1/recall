@@ -1,0 +1,119 @@
+/*
+ * Demo boot: the "library card" that gets issued while the session is created.
+ * State classes live on <main>: .shown (card slides up) → .revealed (fields wipe in)
+ * → .issued (stamp thump, card knock, CTA fade). Each step <li> carries its own
+ * .busy / .done / .failed class because it ticks when its real request resolves.
+ */
+
+/* ---------- Card ---------- */
+
+.card {
+  position: relative;
+  opacity: 0;
+  transform: translateY(28px) rotate(-1.2deg);
+  transition: opacity 420ms var(--ease-out), transform 620ms var(--ease-out);
+  /* Deeper than the shared .sheet shadow: this card is the only object on the page. */
+  filter: drop-shadow(0 1px 1px rgba(70, 45, 20, 0.07)) drop-shadow(0 18px 34px rgba(70, 45, 20, 0.16));
+}
+.shown .card { opacity: 1; transform: translateY(0) rotate(-1.2deg); }
+
+/* A bigger dog-ear than the shared 18px one, to match the card's size. */
+.ear { clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
+.edge { background: var(--line-2); padding: 1px; }
+
+.inner {
+  position: relative;
+  background-color: var(--sheet);
+  /* Ruled lines every 36px; the dl and steps use 36px/28px+gap rhythm to sit on them. */
+  background-image: repeating-linear-gradient(180deg, transparent 0 35px, var(--rule) 35px 36px);
+  padding: 26px 30px 26px 74px;
+}
+
+.marginLine { position: absolute; left: 52px; top: 0; bottom: 0; width: 1px; background: var(--margin); }
+
+.fold {
+  position: absolute; top: 0; right: 0; width: 22px; height: 22px;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  background: linear-gradient(45deg, #d9d0bf 0%, #f4efe5 70%);
+}
+
+/* ---------- Fields: a left-to-right wipe, staggered ---------- */
+
+.fieldV {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 520ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.revealed .fieldV { clip-path: inset(0 0 0 0); }
+.revealed .f2 .fieldV { transition-delay: 160ms; }
+.revealed .f3 .fieldV { transition-delay: 320ms; }
+
+/* ---------- Steps ---------- */
+
+.step { opacity: 0.38; transition: opacity 220ms ease; }
+.tick { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 300ms var(--ease-out); }
+.dot {
+  position: relative; width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto;
+  background-color: var(--line-2); transform: scale(0.85);
+  transition: background-color 200ms ease, transform 260ms var(--ease-out);
+}
+
+.done, .failed { opacity: 1; }
+.done .tick { stroke-dashoffset: 0; }
+.done .dot { background-color: var(--good); transform: scale(1); }
+.busy .dot { animation: pulse 900ms ease-in-out infinite; }
+.failed .dot { background-color: var(--red); transform: scale(1); }
+
+@keyframes pulse { 50% { transform: scale(0.7); } }
+
+/* ---------- Stamp + knock ---------- */
+
+.stamp {
+  position: absolute; left: 72%; top: 46%;
+  padding: 8px 16px 6px; border: 3px solid var(--red); border-radius: 6px;
+  color: var(--red); font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.14em; line-height: 1;
+  text-align: center; mix-blend-mode: multiply; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(1.9);
+}
+.stampDate { display: block; margin-top: 4px; font-size: 10px; letter-spacing: 0.1em; }
+.issued .stamp { animation: thump 460ms cubic-bezier(0.2, 0.9, 0.25, 1.25) forwards; }
+/* The card dips 2px as the stamp lands, like it was hit. */
+.issued .inner { animation: knock 260ms ease-out 260ms; }
+
+@keyframes thump {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(1.9); }
+  60% { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(0.94); }
+  100% { opacity: 0.92; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+}
+@keyframes knock { 40% { transform: translateY(2px); } }
+
+/* ---------- Error ---------- */
+
+.error {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px;
+  margin-top: 14px; padding: 10px 12px; border-left: 3px solid var(--red);
+  background: rgba(200, 37, 14, 0.06); font-size: 14px; line-height: 1.45;
+}
+
+/* ---------- CTA ---------- */
+
+.cta {
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 320ms var(--ease-out) 380ms, transform 320ms var(--ease-out) 380ms;
+}
+.issued .cta { opacity: 1; transform: none; }
+
+/* ---------- Phone width: tighter margins so the fields don't crush ---------- */
+
+@media (max-width: 479px) {
+  .inner { padding: 22px 18px 22px 52px; }
+  .marginLine { left: 36px; }
+  .stamp { left: 70%; font-size: 18px; }
+}
+
+/* Reduced motion: no slides, wipes, pulses or thumps; the stamp is simply there. */
+@media (prefers-reduced-motion: reduce) {
+  .card, .fieldV, .step, .tick, .dot, .cta { transition: none !important; }
+  .issued .stamp, .issued .inner, .busy .dot { animation: none !important; }
+  .issued .stamp { opacity: 0.92; transform: translate(-50%, -50%) rotate(-12deg); }
+}

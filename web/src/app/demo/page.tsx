@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Grain } from "@/components/Grain";
+import { DemoBoot } from "./_components/DemoBoot";
 
 export const metadata: Metadata = { title: "Preparing your demo" };
 
-// Placeholder until feat/demo-boot lands.
+/**
+ * /demo sits outside the (app) group on purpose: no nav while the session is
+ * being issued, just the card centred on a full-height sheet of paper.
+ */
 export default function Page() {
   return (
-    <main id="main" className="grid min-h-dvh place-items-center bg-paper px-6">
-      <Link href="/ask" className="btn btn-red rounded-[5px] px-5 py-3 font-medium">Open my notebook</Link>
-    </main>
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-paper px-4 py-12 text-ink sm:px-6">
+      <Grain />
+      <DemoBoot />
+    </div>
   );
 }
