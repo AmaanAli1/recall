@@ -91,7 +91,7 @@
 
 .error {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px;
-  margin-top: 14px; padding: 10px 12px; border-left: 3px solid var(--red);
+    margin-top: 14px; padding: 10px 12px; border: 1px solid rgba(200, 37, 14, 0.35); border-radius: 4px;
   background: rgba(200, 37, 14, 0.06); font-size: 14px; line-height: 1.45;
 }
 
