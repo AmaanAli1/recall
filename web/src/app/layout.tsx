@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "@/components/shell.css";
 
 // Fonts are self-hosted from npm (@fontsource) via next/font/local:
 // no runtime request to Google, no layout shift, works in CI without network quirks.
