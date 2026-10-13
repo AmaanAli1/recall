@@ -27,8 +27,9 @@ jobs:
 
       # same CLI version as your laptop, so CI and 
       # local behave the same
-      - name: Start a throwaway Supabase
-        run: supabase start
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
 
       # Runs every file in supabase/tests with pgTAP
       - name: Run database tests
