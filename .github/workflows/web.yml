@@ -1,26 +1,20 @@
 # CI for the Next.js frontend in /web.
 #
-# Runs on every pull request that touches web/** (and on pushes to main),
-# as four separate jobs so a failure is labelled clearly in the PR checks:
-#   lint → ESLint
-#   typecheck → tsc --noEmit
-#   unit → Vitest
-#   e2e → Playwright against a production build, with the mocked API
+# Runs on every pull request and on pushes to main.
+# A `changes` job checks whether web/ changed; if not,
+# the four jobs below are skipped (and count as passed).
 #
 # Branch protection on main should require all four checks to pass.
 
 name: web
 
 on:
+  # No path filters here on purpose: required checks
+  # must always report, or non-web PRs can't merge.
+  # The `changes` job below decides what really runs.
   pull_request:
-    paths:
-      - "web/**"
-      - ".github/workflows/web.yml"
   push:
     branches: [main]
-    paths:
-      - "web/**"
-      - ".github/workflows/web.yml"
 
 # A newer push to the same PR cancels the older, still-running run.
 concurrency:
@@ -37,7 +31,31 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
+  # Looks at the files this PR/push changed and
+  # outputs web=true/false for the other jobs.
+  changes:
+    runs-on: ubuntu-latest
+    # Least privilege: it only needs to read the
+    # repo and the PR's list of changed files.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'web/**'
+              - '.github/workflows/web.yml'
   lint:
+    # Wait for `changes`, then run only if web/ changed.
+    # Skipped = reported as passed to branch protection.
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +68,8 @@ jobs:
       - run: npm run lint
 
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +82,8 @@ jobs:
       - run: npm run typecheck
 
   unit:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,6 +96,8 @@ jobs:
       - run: npm run test:unit
 
   e2e:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
