@@ -1,0 +1,41 @@
+# Keeps the free Supabase project from pausing.
+#
+# Supabase pauses free projects after ~7 days with
+# no database activity. Twice a week we call our own
+# /api/health, which runs `SELECT NOW()`: a real
+# query, so it counts as activity.
+
+name: keepalive
+
+on:
+  schedule:
+    # cron: minute hour day-of-month month weekday
+    # 09:00 UTC every Monday (1) and Thursday (4).
+    # Schedules only run from the default branch.
+    - cron: "0 9 * * 1,4"
+  # Adds a "Run workflow" button in the Actions tab,
+  # so you can test it without waiting for Monday.
+  workflow_dispatch:
+
+# This job only makes an HTTP request, so it gets
+# no access to the repo at all (least privilege).
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the health endpoint
+        # Secrets go in through env, never pasted
+        # into the command (GitHub masks them in logs).
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}
+        # --fail       non-2xx status = failed run, so a
+        #              down database turns this red
+        # --max-time   give up after 30s
+        # --retry 3    retry hiccups, e.g. a cold start
+        run: |
+          curl --fail --silent --show-error \
+            --max-time 30 --retry 3 --retry-delay 10 \
+            "$HEALTH_URL"
