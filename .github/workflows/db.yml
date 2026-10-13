@@ -1,0 +1,35 @@
+# Database tests: run the pgTAP files in
+# supabase/tests against throwaway local Supabase.
+# Never touches the real project.
+
+name: db
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/db.yml"
+    push:
+      branches: [main]
+      paths:
+        - "supabase/**"
+        - ".github/workflows/db.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  rls-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # same CLI version as your laptop, so CI and 
+      # local behave the same
+      - name: Start a throwaway Supabase
+        run: supabase start
+
+      # Runs every file in supabase/tests with pgTAP
+      - name: Run database tests
+        run: supabase test db
