@@ -23,7 +23,7 @@ const fragment = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Recall: answers cited to the page", template: "%s · Recall" },
+  title: { default: "Recall", template: "%s · Recall" },
   description:
     "Recall reads your lecture PDFs, scores every passage against your question, and shows the exact page each answer came from.",
 };

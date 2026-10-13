@@ -10,7 +10,8 @@ import { Pipeline } from "./_landing/Pipeline";
 import { SpecSheet } from "./_landing/SpecSheet";
 
 // The root layout's default title is the landing title, so `absolute` keeps the template off it.
-export const metadata: Metadata = { title: { absolute: "Recall: answers cited to the page" } };
+// `absolute` uses this exact title, without the "%s · Recall" template.
+export const metadata: Metadata = { title: { absolute: "Recall" } };
 
 /** Landing page. Server component; only the interactive sections ship client JS. */
 export default function Home() {
