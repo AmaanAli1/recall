@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Recall mark: [ // ] in brand red on paper.
+       Paths, not text, so it never needs a font. -->
+  <rect width="32" height="32" rx="7" fill="#F3EFE6"/>
+  <g fill="none" stroke="#C8250E" stroke-width="2.4">
+    <path d="M9.6 6.5H6.5v19h3.1"/>
+    <path d="M22.4 6.5h3.1v19h-3.1"/>
+  </g>
+  <!-- Two bars slanted like the wordmark;
+       the second at 45% like the logo. -->
+  <path d="M11 22.5h2.6l4.2-13h-2.6z" fill="#C8250E"/>
+  <path d="M14.8 22.5h2.6l4.2-13h-2.6z"
+        fill="#C8250E" fill-opacity=".45"/>
+</svg>
