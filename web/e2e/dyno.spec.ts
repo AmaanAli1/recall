@@ -2,8 +2,36 @@ import { expect, test, type Page } from "@playwright/test";
 
 const runsTable = (page: Page) => page.getByRole("region", { name: "Runs", exact: true });
 
-test.describe("dyno", () => {
+/** Opt into the sample runs (the mock serves none by default, like the real API before launch). */
+async function withSampleRuns(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("recall-fixtures", "dyno");
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+test.describe("dyno before launch (no runs)", () => {
+  test("shows the empty state with no numbers @mobile", async ({ page }) => {
+    await page.goto("/dyno");
+    await expect(page.getByRole("heading", { level: 1, name: "Waiting on the first run." })).toBeVisible();
+    const metrics = page.getByRole("region", { name: "Metrics Dyno will track" });
+    await expect(metrics.getByRole("heading", { level: 2 })).toHaveText(["Recall@5", "MRR", "Faithfulness", "Answer relevancy"]);
+    await expect(metrics.getByText("No score yet")).toHaveCount(4);
+    const table = runsTable(page);
+    await expect(table.getByRole("columnheader", { name: "Details" })).toBeVisible();
+    await expect(table.getByText("No runs yet.")).toBeVisible();
+    // Nothing from the sample data leaks through.
+    await expect(page.getByRole("button", { name: "Run Dyno" })).toHaveCount(0);
+    await expect(page.getByText(/\bR1[0-3]\b|\bR[89]\b/)).toHaveCount(0);
+  });
+});
+
+test.describe("dyno with sample runs", () => {
   test.beforeEach(async ({ page }) => {
+    await withSampleRuns(page);
     await page.goto("/dyno");
   });
 

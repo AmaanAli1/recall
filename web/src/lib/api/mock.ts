@@ -194,9 +194,22 @@ export async function deleteChat(id: string): Promise<void> {
 
 // ---------- dyno ----------
 
+/**
+ * No real Dyno runs exist until launch, so the mock returns none and the page shows its
+ * empty state. Tests (and design reviews) can opt into the sample runs with
+ * localStorage "recall-fixtures" = "dyno", to exercise the full dashboard.
+ */
+function sampleDyno(): boolean {
+  try {
+    return typeof window !== "undefined" && window.localStorage.getItem("recall-fixtures") === "dyno";
+  } catch {
+    return false;
+  }
+}
+
 export async function listDynoRuns(): Promise<DynoRun[]> {
   await wait(80);
-  return clone(DYNO_RUNS);
+  return sampleDyno() ? clone(DYNO_RUNS) : [];
 }
 
 /** Simulates a full Dyno run in about 5 s (a real run takes a few minutes). */

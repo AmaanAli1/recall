@@ -57,6 +57,16 @@ test.describe("ask", () => {
     await expect(chats.getByText("Chat deleted.")).toHaveCount(0);
   });
 
+  test("composer is on screen in a short window", async ({ page }) => {
+    // A laptop-sized window: the workspace used to have a 900px floor, which pushed the composer off screen.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/ask");
+    await page.locator(".page-in").evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    await expect(page.getByRole("textbox", { name: "Ask about Algorithms" })).toBeInViewport({ ratio: 1 });
+    // The page itself doesn't scroll: only the panes inside the workspace do.
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(1);
+  });
+
   test("opening a delete confirm does not move the composer", async ({ page }) => {
     await page.goto("/ask");
     const composer = page.getByRole("textbox", { name: "Ask about Algorithms" });
@@ -170,7 +180,8 @@ test.describe("ask", () => {
     await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(6);
     await expect(page).toHaveURL(/\/ask$/);
     await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=algo");
-    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("run 12");
+    // No real Dyno runs before launch, so the glance card says so instead of showing a number.
+    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("not run yet");
   });
 
   test("the Settings × closes the popover", async ({ page }) => {
