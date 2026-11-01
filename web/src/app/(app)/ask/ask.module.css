@@ -28,14 +28,17 @@
  * Fixed-height panes on wide screens so nothing in one column can push the composer:
  * only the chat list, the answer sheet and the sources pane scroll.
  * --ask-top is the header height, measured by the workspace (header lives in the layout).
+ * The workspace fits the window (no 900px floor) so the composer is always on screen; only
+ * windows under 560px tall fall back to page scroll. The answer sheet doesn't trap the wheel:
+ * when it reaches its end, scrolling carries on to the page.
  */
 @media (min-width: 1081px) {
-  .ws { height: max(900px, calc(100dvh - var(--ask-top, 62px))); overflow: hidden; flex: none; }
+  .ws { height: calc(100dvh - var(--ask-top, 62px)); min-height: 560px; overflow: hidden; flex: none; }
   .row { flex: 1 1 0; min-height: 0; flex-wrap: nowrap; }
   .paneLeft, .paneRight, .paneMain { min-height: 0; max-height: 100%; }
   .paneRight { overflow-y: auto; overscroll-behavior: contain; }
   .chatScroll { flex: 1 1 0 !important; min-height: 176px !important; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px; padding: 0 6px; scrollbar-gutter: stable; }
-  .article { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .article { min-height: 0; overflow-y: auto; }
 }
 .chatScroll, .paneRight, .article { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
 

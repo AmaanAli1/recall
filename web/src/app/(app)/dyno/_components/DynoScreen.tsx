@@ -5,6 +5,7 @@ import { listDynoRuns, startDynoRun, type DynoRun } from "@/lib/api";
 import { cx, estimateOf, gateOf, liveN, nextRunId, runNum, upsertRun, type ChartMetric, type LiveView, type Role, type RunState } from "../_lib/model";
 import s from "../dyno.module.css";
 import { Collapse } from "./Collapse";
+import { DynoEmpty } from "./DynoEmpty";
 import { ComparePanel } from "./ComparePanel";
 import { DynoHeader } from "./DynoHeader";
 import { Gauges } from "./Gauges";
@@ -85,7 +86,7 @@ export function DynoScreen() {
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     const key = e.key.toLowerCase();
-    if (key === "c" && runs) {
+    if (key === "c" && runs && runs.length > 0) {
       e.preventDefault();
       if (cmpOpen) closeCompare();
       else setCmpOpen(true);
@@ -100,12 +101,21 @@ export function DynoScreen() {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  if (!runs || runs.length === 0) {
+  if (!runs) {
     return (
-      <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14" aria-busy={!runs}>
+      <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14" aria-busy="true">
         <p className="text-ink-2" role="status">
-          {runs ? "No Dyno runs yet." : "Loading runs…"}
+          Loading runs…
         </p>
+      </main>
+    );
+  }
+
+  // Launch state: no real runs logged yet, so no numbers to show.
+  if (runs.length === 0) {
+    return (
+      <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14">
+        <DynoEmpty />
       </main>
     );
   }
