@@ -67,6 +67,20 @@ test.describe("ask", () => {
     expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(1);
   });
 
+  test("opening Documents keeps Demo visitor + Settings on screen", async ({ page }) => {
+    // Laptop height: the open peek used to push the identity row out of the sidebar, with no way to scroll to it.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/ask");
+    const side = page.getByRole("complementary", { name: "Courses and chats" });
+    await side.getByRole("button", { name: /^Documents/ }).click();
+    await expect(side.getByRole("link", { name: "Manage in Library →" })).toBeInViewport({ ratio: 1 });
+    const gear = side.getByRole("button", { name: "Settings", exact: true });
+    await expect(gear).toBeInViewport({ ratio: 1 });
+    await expect(side.getByText("Demo visitor")).toBeInViewport({ ratio: 1 });
+    await gear.click();
+    await expect(page.getByRole("button", { name: "Close settings" })).toBeInViewport({ ratio: 1 });
+  });
+
   test("opening a delete confirm does not move the composer", async ({ page }) => {
     await page.goto("/ask");
     const composer = page.getByRole("textbox", { name: "Ask about Algorithms" });

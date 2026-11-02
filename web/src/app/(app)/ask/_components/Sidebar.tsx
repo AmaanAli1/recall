@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Course, CourseDocument } from "@/lib/api";
 import { colorHex, courseLabel } from "@/lib/courses";
 import type { Glance } from "./AskWorkspace";
@@ -44,34 +44,40 @@ export function Sidebar({
         New chat <kbd className="kbd">N</kbd>
       </button>
 
-      <nav aria-labelledby="courses-h">
-        <h2 id="courses-h" className="m-0 mb-2 px-2.5 text-[13px] font-medium text-ink-2">Courses</h2>
-        {/* Buttons, not links: choosing a course changes what Ask searches, it doesn't go anywhere. */}
-        {active.map((c) => {
-          const on = c.id === currentCourse;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              aria-current={on ? "true" : undefined}
-              onClick={on ? undefined : () => onSelectCourse(c.id)}
-              className={
-                on
-                  ? "flex w-full items-center rounded border-0 bg-sheet p-2.5 text-left text-[15px] font-medium text-ink shadow-[0_0_0_1px_var(--line-2)]"
-                  : `${s.sideL} flex w-full items-center rounded border-0 bg-transparent p-2.5 text-left text-[15px] text-ink-2`
-              }
-            >
-              <span aria-hidden="true" className={s.courseDot} style={{ background: colorHex(c.color) }} />
-              <span className="min-w-0 flex-auto truncate">{courseLabel(c)}</span>
-              <span className={`num ${s.courseNum} ${on ? "text-red" : ""}`}>[{c.documents.length}]</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/*
+        Everything between "New chat" and the identity row scrolls as one column, so a long
+        chat list or an open Documents peek can never push Demo visitor + Settings off screen.
+      */}
+      <div className={s.sideMid}>
+        <nav aria-labelledby="courses-h">
+          <h2 id="courses-h" className="m-0 mb-2 px-2.5 text-[13px] font-medium text-ink-2">Courses</h2>
+          {/* Buttons, not links: choosing a course changes what Ask searches, it doesn't go anywhere. */}
+          {active.map((c) => {
+            const on = c.id === currentCourse;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                aria-current={on ? "true" : undefined}
+                onClick={on ? undefined : () => onSelectCourse(c.id)}
+                className={
+                  on
+                    ? "flex w-full items-center rounded border-0 bg-sheet p-2.5 text-left text-[15px] font-medium text-ink shadow-[0_0_0_1px_var(--line-2)]"
+                    : `${s.sideL} flex w-full items-center rounded border-0 bg-transparent p-2.5 text-left text-[15px] text-ink-2`
+                }
+              >
+                <span aria-hidden="true" className={s.courseDot} style={{ background: colorHex(c.color) }} />
+                <span className="min-w-0 flex-auto truncate">{courseLabel(c)}</span>
+                <span className={`num ${s.courseNum} ${on ? "text-red" : ""}`}>[{c.documents.length}]</span>
+              </button>
+            );
+          })}
+        </nav>
 
-      <ChatList courseId={currentCourse} currentChat={currentChat} calm={settings.calm} />
+        <ChatList courseId={currentCourse} currentChat={currentChat} calm={settings.calm} />
 
-      <GlanceCard course={current} glance={glance} />
+        <GlanceCard course={current} glance={glance} />
+      </div>
 
       <IdentityRow settings={settings} onSettings={onSettings} />
     </aside>
@@ -84,11 +90,20 @@ export function Sidebar({
  */
 function GlanceCard({ course, glance }: { course: Course | undefined; glance: Glance | null }) {
   const [open, setOpen] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  // Opening the peek can grow the card past the bottom of the sidebar: once it has expanded,
+  // scroll just enough to show all of it (no jump when it already fits).
+  useEffect(() => {
+    if (!open) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => card.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }), reduce ? 0 : 320);
+    return () => clearTimeout(t);
+  }, [open]);
   const docs = course?.documents ?? [];
   const name = course?.name ?? "Algorithms";
   const n = docs.length;
   return (
-    <div className="sheet relative">
+    <div ref={card} className="sheet relative">
       <div className="ear bg-line-2 p-px">
         <div className="ear bg-sheet px-3.5 pb-2 pt-3.5">
           <p className="m-0 text-[13px] font-medium">{name} at a glance</p>
