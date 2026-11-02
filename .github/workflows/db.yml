@@ -5,21 +5,47 @@
 name: db
 
 on:
+  # No path filters here on purpose: once rls-tests is a
+  # required check, it must report on EVERY PR, or PRs that
+  # don't touch the database would wait forever.
+  # The `changes` job below decides what really runs.
   pull_request:
-    paths:
-      - "supabase/**"
-      - ".github/workflows/db.yml"
   push:
     branches: [main]
-    paths:
-      - "supabase/**"
-      - ".github/workflows/db.yml"
+
+# A newer push to the same PR cancels the older run.
+concurrency:
+  group: db-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # Job 1: did anything database-related change?
+  # Outputs db=true/false for the job below.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # paths-filter reads the PR's changed files
+    outputs:
+      db: ${{ steps.filter.outputs.db }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            db:
+              - 'supabase/**'
+              - '.github/workflows/db.yml'
+
+  # Job 2: the real tests, only when job 1 said 'true'.
+  # Skipped = reported as passed to branch protection.
   rls-tests:
+    needs: changes
+    if: needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
