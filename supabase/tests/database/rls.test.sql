@@ -8,7 +8,7 @@ create extension if not exists pgtap with schema extensions;
 
 -- How many tests we promise to run. If one silently 
 -- doesn't run, pgTAP fails the file. 
-select plan(14);
+select plan(15);
 
 -- Two fake visitors. Inserting into auth.users fires 
 -- our trigger, exactly like a real anonymous sign-in. 
@@ -81,7 +81,11 @@ select lives_ok($$ select public.touch_session() $$,
 -- Try to raise our own token budget. There is no 
 -- update policy, so this silently changes 0 rows.
 -- We check the value later as the admin.
-update public.demo_sessions set token_budget = 9999999;
+-- A could not raise their token budget” check as they are.
+  select throws_ok($$
+      update public.demo_sessions set token_budget = 9999999
+  $$, '42501', null,
+      'visitors cannot update their session row at all');
 
 ------------------------------------------------------
 -- Act as visitor B, and attack A's data.
