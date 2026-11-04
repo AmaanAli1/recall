@@ -42,3 +42,38 @@ test.describe("demo boot", () => {
     await expect(page).toHaveURL(/\/ask$/);
   });
 });
+
+  // Start fresh must really delete the session and issue a new one.
+  // Once sessions are real, this same test exercises the real DELETE endpoint
+  // and a brand-new anonymous sign-in. Tagged @mobile so it runs on a phone too.
+  test("Start fresh deletes the session and issues a new one @mobile", async ({ page }) => {
+    // 1. Get a session the way a visitor does: through the boot screen.
+    await page.goto("/demo");
+    const ready = page.getByRole("heading", { name: "Your demo notebook is ready." });
+    await expect(ready).toBeVisible();
+
+    // Remember the first code so we can compare later.
+    // A locator is a *recipe* for finding an element, re-run every time it's used.
+    const code = page.getByText(/demo-[A-Z0-9]{4}-[A-Z0-9]{2}/);
+    const firstCode = (await code.textContent()) ?? "";
+    expect(firstCode).toMatch(/^demo-/); // plain expect: checks once, no retrying
+
+    // 2. Go into the app.
+    await page.getByRole("link", { name: /Open my notebook/ }).click();
+    await expect(page).toHaveURL(/\/ask$/);
+
+    // 3. Open the demo chip; the popover should show the same session.
+    await page.getByRole("button", { name: /Demo · kept 24/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Your demo session" });
+    await expect(dialog).toContainText(firstCode);
+
+    // 4. Start fresh, then confirm. (The shell test stops before this click.)
+    await dialog.getByRole("button", { name: "Start fresh" }).click();
+    await dialog.getByRole("button", { name: "Delete and restart" }).click();
+
+    // 5. Back on the boot screen with a different session.
+    // `code` re-finds the element on the new page; not.toHaveText retries.
+    await expect(page).toHaveURL(/\/demo$/);
+    await expect(ready).toBeVisible();
+    await expect(code).not.toHaveText(firstCode);
+  });

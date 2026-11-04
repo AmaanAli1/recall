@@ -78,3 +78,11 @@ h1.arrived, h2.arrived {
   }
   .totop.show:hover .totop-arrow { transform: translateY(-3px); }
 }
+
+/* Phones: the chip can wrap under the logo, so anchoring the popover to the
+   chip's right edge pushed it off-screen. Below 640px the chip's wrapper is
+   static (max-sm:static), so the popover anchors to the full-width header
+   instead and spans it with a 16px gutter. */
+@media (max-width: 639.98px) {
+  #demo-pop { left: 16px; right: 16px; width: auto; top: calc(100% + 8px); transform-origin: top center; }
+}
