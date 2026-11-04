@@ -1,4 +1,4 @@
-// Files named router.ts under src/app/api/... become API endpoints.
+// Files named route.ts under src/app/api/... become API endpoints.
 // This one lives at /api/health
 
 
@@ -15,10 +15,13 @@ export async function GET() {
         // Simply query just to prove the DB actually responds
         const result = await client.query('SELECT NOW()');
         return NextResponse.json({ ok: true, time: result.rows[0].now });
-    } catch (error) {
-
-        // Connection/query failed - return the error instead of crashing
-        return NextResponse.json({ ok: false, error: String(error) }, { status: 500 });
+        } catch (error) {
+        // Log the real error where only we can see it (Vercel's logs). The
+        // public response stays generic: error text can reveal hostnames or
+        // connection details. Still a 500, so the keepalive's curl --fail
+        // turns red when the database is down.
+        console.error("[api/health] database check failed", error);
+        return NextResponse.json({ ok: false }, { status: 500 });
     } finally {
 
         // Always close the connection, success or failure
