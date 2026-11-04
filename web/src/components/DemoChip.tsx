@@ -55,7 +55,7 @@ export function DemoChip() {
   };
 
   return (
-    <div ref={root} className="relative">
+    <div ref={root} className="relative max-sm:static">
       <button
         type="button"
         className="demo-chip"
