@@ -3,6 +3,8 @@ import { apiError } from "@/lib/supabase/errors";
 import { toDemoSession } from "@/lib/supabase/mappers";
 import { createClient } from "@/lib/supabase/server";
 
+const TOUCH_EVERY_MS = 5 * 60 * 1000 // 5 minutes
+
 /**
  * GET /api/demo-sessions/me: the visitor's current session.
  * 401 when there isn't one; the frontend turns 401 into "no session".
@@ -25,6 +27,15 @@ export async function GET() {
 
   if (error) return apiError("Couldn't load your demo session.", 500, error);
   if (!row) return apiError("No demo session.", 401);
+
+  // "Still here": keeps the session alive (cleanup deletes sessions idle for 
+  // 24 h). Throttled: only when the last bump is over 5 minutes old, so 
+  // loading a page (which reads the session a few times) writes at most once.
+  if (Date.now() - Date.parse(row.last_active_at) > TOUCH_EVERY_MS) {
+    const { error: touchError } = await supabase.rpc("touch_session");
+    // Not worth failing the request over; log it and carry on.
+    if (touchError) console.error("[api] touch_session failed", touchError);
+  }
 
   return NextResponse.json(toDemoSession(row));
 }

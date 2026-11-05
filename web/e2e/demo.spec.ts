@@ -7,7 +7,7 @@ test.describe("demo boot", () => {
     const steps = page.getByRole("listitem");
     for (const label of [
       "Creating your private session",
-      "Copying 3 sample courses into your notebook",
+      "Opening 3 sample courses",
       "Warming up search and the reranker",
     ]) {
       await expect(steps.filter({ hasText: label })).toContainText("done");

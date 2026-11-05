@@ -2,11 +2,12 @@
  * Sample data for the mocked API. It mirrors the 3 sample courses that every
  * demo session ships with (Algorithms, Operating Systems, Statistics).
  */
+import { SAMPLE_COURSE_IDS } from "../sample-courses";
 import type { Answer, ChatSummary, Course, DynoRun, RunConfig } from "./types";
 
 export const COURSES: Course[] = [
   {
-    id: "algo",
+    id: SAMPLE_COURSE_IDS.algorithms,
     name: "Algorithms",
     color: "blue",
     sample: true,
@@ -20,7 +21,7 @@ export const COURSES: Course[] = [
     ],
   },
   {
-    id: "os",
+    id: SAMPLE_COURSE_IDS.operatingSystems,
     name: "Operating Systems",
     color: "teal",
     sample: true,
@@ -32,7 +33,7 @@ export const COURSES: Course[] = [
     ],
   },
   {
-    id: "stats",
+    id: SAMPLE_COURSE_IDS.statistics,
     name: "Statistics",
     color: "ochre",
     sample: true,
@@ -48,17 +49,17 @@ export const COURSES: Course[] = [
 ];
 
 export const CHATS: ChatSummary[] = [
-  { id: "dp", courseId: "algo", title: "DP vs greedy", group: "Today" },
-  { id: "ks", courseId: "algo", title: "Knapsack table walkthrough", group: "Today" },
-  { id: "mt", courseId: "algo", title: "Master theorem cases", group: "This week" },
-  { id: "dj", courseId: "algo", title: "Dijkstra with negative edges", group: "This week" },
-  { id: "am", courseId: "algo", title: "Amortized cost of dynamic arrays", group: "This week" },
-  { id: "bo", courseId: "algo", title: "Big-O vs Big-Theta", group: "Earlier" },
-  { id: "os-dl", courseId: "os", title: "Deadlock conditions", group: "Today" },
-  { id: "os-rr", courseId: "os", title: "Round robin time slices", group: "This week" },
-  { id: "os-sem", courseId: "os", title: "Semaphores vs mutexes", group: "Earlier" },
-  { id: "st-p", courseId: "stats", title: "What a p-value means", group: "This week" },
-  { id: "st-clt", courseId: "stats", title: "Central limit theorem", group: "Earlier" },
+  { id: "dp", courseId: SAMPLE_COURSE_IDS.algorithms, title: "DP vs greedy", group: "Today" },
+  { id: "ks", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Knapsack table walkthrough", group: "Today" },
+  { id: "mt", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Master theorem cases", group: "This week" },
+  { id: "dj", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Dijkstra with negative edges", group: "This week" },
+  { id: "am", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Amortized cost of dynamic arrays", group: "This week" },
+  { id: "bo", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Big-O vs Big-Theta", group: "Earlier" },
+  { id: "os-dl", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Deadlock conditions", group: "Today" },
+  { id: "os-rr", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Round robin time slices", group: "This week" },
+  { id: "os-sem", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Semaphores vs mutexes", group: "Earlier" },
+  { id: "st-p", courseId: SAMPLE_COURSE_IDS.statistics, title: "What a p-value means", group: "This week" },
+  { id: "st-clt", courseId: SAMPLE_COURSE_IDS.statistics, title: "Central limit theorem", group: "Earlier" },
 ];
 
 /** Starter questions shown on an empty Ask screen, keyed to canned answers. */
@@ -86,16 +87,16 @@ const STATS_STARTERS: Starter[] = [
 
 /** Starter questions per course. A course with no documents has none. */
 export const COURSE_STARTERS: Record<string, Starter[]> = {
-  algo: STARTERS,
-  os: OS_STARTERS,
-  stats: STATS_STARTERS,
+  [SAMPLE_COURSE_IDS.algorithms]: STARTERS,
+  [SAMPLE_COURSE_IDS.operatingSystems]: OS_STARTERS,
+  [SAMPLE_COURSE_IDS.statistics]: STATS_STARTERS,
   linalg: [],
 };
 
 export const ANSWERS: Record<string, Answer> = {
   dp: {
     question: STARTERS[0].question,
-    courseId: "algo",
+    courseId: SAMPLE_COURSE_IDS.algorithms,
     claims: [
       "Use dynamic programming when a problem has overlapping subproblems and optimal substructure, but the greedy choice can rule out the best answer",
       "The lecture’s example is 0/1 knapsack: taking the best value-per-weight item first can miss the optimal set",
@@ -115,7 +116,7 @@ export const ANSWERS: Record<string, Answer> = {
   },
   dj: {
     question: STARTERS[1].question,
-    courseId: "algo",
+    courseId: SAMPLE_COURSE_IDS.algorithms,
     claims: [
       "Dijkstra finalizes a vertex the moment it leaves the priority queue, assuming no later path to it can be shorter",
       "A negative edge breaks that assumption: a path that looks longer can pass through it and end up cheaper, after the vertex is already final",
@@ -132,7 +133,7 @@ export const ANSWERS: Record<string, Answer> = {
   },
   ms: {
     question: STARTERS[2].question,
-    courseId: "algo",
+    courseId: SAMPLE_COURSE_IDS.algorithms,
     claims: [
       "Merge sort splits the array in half, sorts both halves, then merges them in linear time, so T(n) = 2T(n/2) + Θ(n)",
       "That fits case 2 of the master theorem with a = 2, b = 2 and f(n) = Θ(n), so T(n) = Θ(n log n)",
@@ -153,7 +154,7 @@ export const ANSWERS: Record<string, Answer> = {
 
   "os-dl": {
     question: OS_STARTERS[0].question,
-    courseId: "os",
+    courseId: SAMPLE_COURSE_IDS.operatingSystems,
     claims: [
       "Deadlock needs four conditions at once: mutual exclusion, hold and wait, no preemption, and circular wait",
       "Circular wait is the easiest to break in practice: acquire locks in one global order and no cycle can form",
@@ -170,7 +171,7 @@ export const ANSWERS: Record<string, Answer> = {
   },
   "os-rr": {
     question: OS_STARTERS[1].question,
-    courseId: "os",
+    courseId: SAMPLE_COURSE_IDS.operatingSystems,
     claims: [
       "Round robin gives each ready process one time slice, then moves it to the back of the queue",
       "A short slice improves response time but spends more of the CPU on context switches",
@@ -187,7 +188,7 @@ export const ANSWERS: Record<string, Answer> = {
   },
   "st-p": {
     question: STATS_STARTERS[0].question,
-    courseId: "stats",
+    courseId: SAMPLE_COURSE_IDS.statistics,
     claims: [
       "A p-value is the probability of seeing data at least this extreme if the null hypothesis were true",
       "It is not the probability that the null hypothesis is true",
@@ -204,7 +205,7 @@ export const ANSWERS: Record<string, Answer> = {
   },
   "st-clt": {
     question: STATS_STARTERS[1].question,
-    courseId: "stats",
+    courseId: SAMPLE_COURSE_IDS.statistics,
     claims: [
       "The central limit theorem says the mean of a large random sample is approximately normally distributed, whatever the population’s shape",
       "That is why we can build confidence intervals for a mean with the normal distribution",

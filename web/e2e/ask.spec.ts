@@ -193,7 +193,7 @@ test.describe("ask", () => {
     await expect(docs).toHaveAttribute("aria-expanded", "true");
     await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(6);
     await expect(page).toHaveURL(/\/ask$/);
-    await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=algo");
+    await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
     // No real Dyno runs before launch, so the glance card says so instead of showing a number.
     await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("not run yet");
   });
@@ -208,7 +208,7 @@ test.describe("ask", () => {
   });
 
   test("/ask?course=os opens on that course", async ({ page }) => {
-    await page.goto("/ask?course=os");
+    await page.goto("/ask?course=00000000-0000-0000-0000-00000000c002");
     await expect(page.getByRole("heading", { level: 1, name: "Ask anything about Operating Systems." })).toBeVisible();
   });
 });
