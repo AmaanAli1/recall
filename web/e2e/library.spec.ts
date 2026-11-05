@@ -209,7 +209,7 @@ test.describe("library", () => {
   });
 
   test("/library?course=os opens on that course", async ({ page }) => {
-    await page.goto("/library?course=os");
+    await page.goto("/library?course=00000000-0000-0000-0000-00000000c002");
     await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
   });
 });

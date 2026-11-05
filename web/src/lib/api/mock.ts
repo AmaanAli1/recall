@@ -74,6 +74,21 @@ export async function listCourses(): Promise<Course[]> {
   }));
 }
 
+/**
+ * Real courses (from the API) + the mock's documents. Documents stay mocked
+ * until the RAG phase. Matching by course id works because the mock's sample
+ * courses use the same fixed ids as the database (lib/sample-courses.ts).
+ */
+export function withMockDocuments(real: Course[]): Course[] {
+  return real.map((c) => {
+    const base = courses.find((x) => x.id === c.id)?.documents ?? [];
+    const documents = [...(uploaded[c.id] ?? []), ...base]
+      .filter((d) => !deletedDocs.has(d.id))
+      .map((d) => ocrDone[d.id] ?? d);
+    return { ...c, documents: clone(documents) };
+  });
+}
+
 /** Same checks the real API must run (the dialog's checks are only for UX). */
 function checkInput(input: CourseInput, selfId?: string) {
   const others = courses.filter((c) => c.id !== selfId).map((c) => c.name);

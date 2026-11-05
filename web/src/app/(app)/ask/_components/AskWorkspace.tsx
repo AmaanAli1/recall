@@ -10,10 +10,11 @@ import { Composer } from "./Composer";
 import { Sidebar } from "./Sidebar";
 import { SourcesPane } from "./SourcesPane";
 import { DEFAULT_SETTINGS, type Settings } from "./settings";
+import { SAMPLE_COURSE_IDS } from "@/lib/sample-courses";
 import s from "../ask.module.css";
 
 /** The course Ask opens on. Dyno's golden set is also Algorithms. */
-const DEFAULT_COURSE = "algo";
+const DEFAULT_COURSE: string = SAMPLE_COURSE_IDS.algorithms;
 
 export interface Glance {
   passages: number;

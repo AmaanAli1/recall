@@ -98,3 +98,21 @@ describe("DELETE /api/demo-sessions/me", () => {
     expect(fake.signOut).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/demo-sessions/me: keeping the session alive", () => {
+  const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+
+  it("bumps last_active_at when the last bump is over 5 minutes old", async () => {
+    fake.claims = { sub: "user-1" };
+    fake.row = { code: "demo-UFB5-LR", created_at: minutesAgo(60), last_active_at: minutesAgo(10) };
+    await GET();
+    expect(fake.rpc).toHaveBeenCalledWith("touch_session");
+  });
+
+  it("doesn't write again within 5 minutes", async () => {
+    fake.claims = { sub: "user-1" };
+    fake.row = { code: "demo-UFB5-LR", created_at: minutesAgo(60), last_active_at: minutesAgo(1) };
+    await GET();
+    expect(fake.rpc).not.toHaveBeenCalled();
+  });
+});

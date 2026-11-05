@@ -11,6 +11,19 @@ import type { Answer, ChatSummary, Course, CourseDocument, CourseInput, DemoSess
 export * from "./types";
 
 export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API !== "false";
+
+/**
+ * Per-feature switch: "true" = demo sessions and the course list use the real
+ * API (Next.js route handlers + Supabase), while documents, Ask, chats and
+ * Dyno stay mocked until their phase ships. Off in CI, so e2e tests keep
+ * running on the mock. Set in Vercel (Preview + Production).
+ */
+export const REAL_SESSIONS = process.env.NEXT_PUBLIC_REAL_SESSIONS === "true";
+const MOCK_SESSIONS = USE_MOCK && !REAL_SESSIONS;
+
+/** Creating and editing your own courses arrives with Phase 5 (December). */
+const COURSES_READ_ONLY =
+  "Adding and editing your own courses is coming soon. The 3 sample courses are ready to use.";
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
 
 export class ApiError extends Error {
@@ -43,12 +56,12 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
 
 /** POST /demo-sessions: create an anonymous session (sets the session cookie). */
 export function createDemoSession(): Promise<DemoSession> {
-  return USE_MOCK ? mock.createDemoSession() : http("/demo-sessions", { method: "POST" });
+  return MOCK_SESSIONS ? mock.createDemoSession() : http("/demo-sessions", { method: "POST" });
 }
 
 /** GET /demo-sessions/me: the current session, or null if there isn't one. */
 export async function getDemoSession(): Promise<DemoSession | null> {
-  if (USE_MOCK) return mock.getDemoSession();
+  if (MOCK_SESSIONS) return mock.getDemoSession();
   try {
     return await http<DemoSession>("/demo-sessions/me");
   } catch (e) {
@@ -59,13 +72,16 @@ export async function getDemoSession(): Promise<DemoSession | null> {
 
 /** DELETE /demo-sessions/me: delete the session and everything in it ("Start fresh"). */
 export function endDemoSession(): Promise<void> {
-  return USE_MOCK ? mock.endDemoSession() : http("/demo-sessions/me", { method: "DELETE" });
+  return MOCK_SESSIONS ? mock.endDemoSession() : http("/demo-sessions/me", { method: "DELETE" });
 }
 
 // ---------- Library ----------
 
-export function listCourses(): Promise<Course[]> {
-  return USE_MOCK ? mock.listCourses() : http("/courses");
+export async function listCourses(): Promise<Course[]> {
+  if (MOCK_SESSIONS) return mock.listCourses();
+  const courses = await http<Course[]>("/courses");
+  // Real courses, mocked documents (until the RAG phase).
+  return USE_MOCK ? mock.withMockDocuments(courses) : courses;
 }
 
 /**
@@ -85,16 +101,19 @@ export function uploadDocument(
 
 /** POST /courses: make a course. The server enforces the limits too (10 courses, unique name). */
 export function createCourse(input: CourseInput): Promise<Course> {
+  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
   return USE_MOCK ? mock.createCourse(input) : http("/courses", { method: "POST", body: JSON.stringify(input) });
 }
 
 /** PATCH /courses/{id}: rename, recolour, change term, archive or unarchive. */
 export function updateCourse(id: string, patch: Partial<CourseInput> & { archived?: boolean }): Promise<Course> {
+  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
   return USE_MOCK ? mock.updateCourse(id, patch) : http(`/courses/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
 /** DELETE /courses/{id}: the course, its PDFs and its chats. */
 export function deleteCourse(id: string): Promise<void> {
+  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
   return USE_MOCK ? mock.deleteCourse(id) : http(`/courses/${id}`, { method: "DELETE" });
 }
 
