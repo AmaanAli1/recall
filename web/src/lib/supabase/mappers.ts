@@ -1,4 +1,4 @@
-import type { Course, CourseColor, CourseDocument, DemoSession } from "@/lib/api/types";
+   import type { ChatRecord, Course, CourseColor, CourseDocument, DemoSession } from "@/lib/api/types";
 
 /*
  * Database rows → the frontend's types (lib/api/types.ts).
@@ -50,3 +50,22 @@ export function toCourse(row: CourseRow, documents: CourseDocument[] = []): Cour
     documents,
   };
 }
+
+   /** The columns we read from public.chats. */
+   export interface ChatRow {
+     id: string;
+     course_id: string;
+     title: string;
+     pinned: boolean;
+     updated_at: string;
+   }
+
+   export function toChatRecord(row: ChatRow): ChatRecord {
+     return {
+       id: row.id,
+       courseId: row.course_id,
+       title: row.title,
+       pinned: row.pinned,
+       updatedAt: row.updated_at,
+     };
+   }

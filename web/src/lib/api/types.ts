@@ -97,6 +97,20 @@ export interface ChatSummary {
   pinned?: boolean;
 }
 
+   /**
+    * A chat as the API sends it (GET/POST /api/chats). There's no "group":
+    * "Today" depends on the visitor's timezone, so the browser works it out
+    * from updatedAt (Chats Phase 3 turns this into a ChatSummary).
+    */
+   export interface ChatRecord {
+     id: string;
+     courseId: string;
+     title: string;
+     pinned: boolean;
+     /** ISO time of the last message; the sidebar sorts and groups by it. */
+     updatedAt: string;
+   }
+
 export type MetricKey = "recall" | "mrr" | "faith" | "correct" | "relev";
 
 export interface DynoRun {
