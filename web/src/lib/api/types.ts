@@ -97,19 +97,31 @@ export interface ChatSummary {
   pinned?: boolean;
 }
 
-   /**
-    * A chat as the API sends it (GET/POST /api/chats). There's no "group":
-    * "Today" depends on the visitor's timezone, so the browser works it out
-    * from updatedAt (Chats Phase 3 turns this into a ChatSummary).
-    */
-   export interface ChatRecord {
-     id: string;
-     courseId: string;
-     title: string;
-     pinned: boolean;
-     /** ISO time of the last message; the sidebar sorts and groups by it. */
-     updatedAt: string;
-   }
+/**
+* A chat as the API sends it (GET/POST /api/chats). There's no "group":
+* "Today" depends on the visitor's timezone, so the browser works it out
+* from updatedAt (Chats Phase 3 turns this into a ChatSummary).
+*/
+export interface ChatRecord {
+  id: string;
+  courseId: string;
+  title: string;
+  pinned: boolean;
+  /** ISO time of the last message; the sidebar sorts and groups by it. */
+  updatedAt: string;
+}
+
+/** One message in a chat (GET/POST /api/chats/[id]/messages). */
+export interface ChatMessage {
+  /** Increasing number: a question always sorts before its answer. */
+  id: number;
+  role: "user" | "assistant";
+  /** The question, or the answer's text. */
+  content: string;
+  /** The full answer (claims, sources, timing); only on assistant messages. */
+  answer?: Answer;
+  createdAt: string;
+}
 
 export type MetricKey = "recall" | "mrr" | "faith" | "correct" | "relev";
 

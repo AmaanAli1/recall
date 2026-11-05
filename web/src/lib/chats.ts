@@ -134,3 +134,36 @@ export function parseNewChat(body: unknown): Parsed<Exchange & { courseId: strin
   if (!exchange.ok) return exchange;
   return { ok: true, value: { courseId, ...exchange.value } };
 }
+
+/** What PATCH /api/chats/[id] may change: a new title, pinned, or both. */
+export interface ChatPatch {
+  title?: string;
+  pinned?: boolean;
+}
+
+/**
+ * Check the body of PATCH /api/chats/[id].
+ *
+ * Only title and pinned are accepted, matching the database's column
+ * grant UPDATE (title, pinned). Anything else in the body is ignored,
+ * never passed on, so the API can't be used to try other columns.
+ */
+export function parseChatPatch(body: unknown): Parsed<ChatPatch> {
+  if (typeof body !== "object" || body === null) return { ok: false, error: "Nothing to change." };
+  const { title, pinned } = body as Record<string, unknown>;
+  const patch: ChatPatch = {};
+
+  if (title !== undefined) {
+    if (typeof title !== "string") return { ok: false, error: "Give the chat a name." };
+    const clean = cleanTitle(title);
+    if (!clean) return { ok: false, error: "Give the chat a name." };
+    patch.title = clean;
+  }
+  if (pinned !== undefined) {
+    if (typeof pinned !== "boolean") return { ok: false, error: "pinned must be true or false." };
+    patch.pinned = pinned;
+  }
+
+  if (patch.title === undefined && patch.pinned === undefined) return { ok: false, error: "Nothing to change." };
+  return { ok: true, value: patch };
+}

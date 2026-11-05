@@ -1,59 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fake } from "@/test/fake-supabase";
 
 /*
- * Unit tests for GET/POST /api/chats, with a fake Supabase client (same
- * idea as demo-sessions/me/route.test.ts). The real database rules (RLS,
- * grants, limits) are tested by pgTAP in chats.test.sql.
- *
- * These routes chain query calls: from("chats").select(…).eq(…).order(…).
- * FakeQuery records every call, returns itself so the chain keeps going,
- * and when the route awaits it, hands back the next queued result.
+ * Unit tests for GET/POST /api/chats, with the fake Supabase client from
+ * src/test/fake-supabase.ts (it explains how FakeQuery works). The real
+ * database rules (RLS, grants, limits) are tested by pgTAP in chats.test.sql.
  */
 
-type Result = { data?: unknown; error?: { code?: string; message?: string } | null };
-
-class FakeQuery {
-  calls: [string, unknown[]][] = [];
-  constructor(public table: string) {}
-
-  private record(name: string, args: unknown[]) {
-    this.calls.push([name, args]);
-    return this;
-  }
-  select(...a: unknown[]) { return this.record("select", a); }
-  insert(...a: unknown[]) { return this.record("insert", a); }
-  delete(...a: unknown[]) { return this.record("delete", a); }
-  eq(...a: unknown[]) { return this.record("eq", a); }
-  order(...a: unknown[]) { return this.record("order", a); }
-  limit(...a: unknown[]) { return this.record("limit", a); }
-  single(...a: unknown[]) { return this.record("single", a); }
-
-  // "await query" calls then(). Giving FakeQuery a then() makes it
-  // awaitable, like the real query builder.
-  then(resolve: (r: Result) => unknown, reject?: (e: unknown) => unknown) {
-    const result = fake.results.shift() ?? { data: null, error: null };
-    return Promise.resolve(result).then(resolve, reject);
-  }
-}
-
-const fake = {
-  claims: null as null | { sub: string },
-  results: [] as Result[],
-  queries: [] as FakeQuery[],
-};
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: {
-      getClaims: async () => ({ data: fake.claims ? { claims: fake.claims } : null, error: null }),
-    },
-    from: (table: string) => {
-      const q = new FakeQuery(table);
-      fake.queries.push(q);
-      return q;
-    },
-  }),
-}));
+vi.mock("@/lib/supabase/server", async () => {
+  const { fakeClient } = await import("@/test/fake-supabase");
+  return { createClient: async () => fakeClient() };
+});
 
 // Import AFTER vi.mock, so the route gets the fake client.
 const { GET, POST } = await import("./route");
@@ -74,9 +31,7 @@ const post = (body: unknown) =>
   POST(new Request("http://test/api/chats", { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) }));
 
 beforeEach(() => {
-  fake.claims = { sub: "user-1" };
-  fake.results = [];
-  fake.queries = [];
+    fake.reset();
   // apiError logs the real error; keep the test output quiet.
   vi.spyOn(console, "error").mockImplementation(() => {});
 });

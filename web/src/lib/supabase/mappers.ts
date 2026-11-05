@@ -1,7 +1,7 @@
-   import type { ChatRecord, Course, CourseColor, CourseDocument, DemoSession } from "@/lib/api/types";
+import type { Answer, ChatMessage, ChatRecord, Course, CourseColor, CourseDocument, DemoSession } from "@/lib/api/types";
 
 /*
- * Database rows → the frontend's types (lib/api/types.ts).
+ * Database rows -> the frontend's types (lib/api/types.ts).
  *
  * Postgres uses snake_case and null; the frontend uses camelCase and leaves
  * optional fields out. Doing the conversion in ONE place means the route
@@ -39,7 +39,7 @@ export function toCourse(row: CourseRow, documents: CourseDocument[] = []): Cour
   return {
     id: row.id,
     name: row.name,
-    // null in the database → leave the field out (undefined) in the UI.
+    // null in the database -> leave the field out (undefined) in the UI.
     code: row.code ?? undefined,
     term: row.term ?? undefined,
     color: row.color,
@@ -69,3 +69,23 @@ export function toCourse(row: CourseRow, documents: CourseDocument[] = []): Cour
        updatedAt: row.updated_at,
      };
    }
+
+   /** The columns we read from public.messages. */
+export interface MessageRow {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  answer: Answer | null;
+  created_at: string;
+}
+
+export function toChatMessage(row: MessageRow): ChatMessage {
+  return {
+    id: row.id,
+    role: row.role,
+    content: row.content,
+    // null on questions -> leave the field out.
+    answer: row.answer ?? undefined,
+    createdAt: row.created_at,
+  };
+}
