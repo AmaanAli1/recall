@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanQuestion, cleanTitle, isUuid, parseExchange, parseNewChat, titleFromQuestion } from "./chats";
+import { cleanQuestion, cleanTitle, isUuid, parseChatPatch, parseExchange, parseNewChat, titleFromQuestion } from "./chats";
 
 const COURSE = "00000000-0000-0000-0000-00000000c001";
 const answer = { claims: ["When choices overlap.", "Greedy can't undo a choice."] };
@@ -100,5 +100,24 @@ describe("parseNewChat", () => {
   it("needs a valid course id", () => {
     expect(parseNewChat({ courseId: "algorithms", question: "Hi", answer })).toEqual({ ok: false, error: "Pick a course." });
     expect(parseNewChat({ courseId: COURSE, question: "Hi", answer }).ok).toBe(true);
+  });
+});
+
+describe("parseChatPatch", () => {
+  it("accepts a new title (cleaned) and/or pinned", () => {
+    expect(parseChatPatch({ title: "  Exam  prep " })).toEqual({ ok: true, value: { title: "Exam prep" } });
+    expect(parseChatPatch({ pinned: true })).toEqual({ ok: true, value: { pinned: true } });
+  });
+
+  it("ignores any other field instead of passing it on", () => {
+    const r = parseChatPatch({ pinned: false, course_id: "x", session_id: "y" });
+    expect(r).toEqual({ ok: true, value: { pinned: false } });
+  });
+
+  it("rejects an empty title, a non-boolean pinned, or nothing to change", () => {
+    expect(parseChatPatch({ title: "   " }).ok).toBe(false);
+    expect(parseChatPatch({ pinned: "yes" }).ok).toBe(false);
+    expect(parseChatPatch({}).ok).toBe(false);
+    expect(parseChatPatch(null).ok).toBe(false);
   });
 });
