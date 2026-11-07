@@ -95,6 +95,8 @@ export interface ChatSummary {
   group: "Today" | "This week" | "Earlier";
   /** Pinned chats sit in a "Pinned" group at the top. */
   pinned?: boolean;
+  /** ISO time of the last message (real chats only; the mock has fixed groups). */
+  updatedAt?: string;
 }
 
 /**

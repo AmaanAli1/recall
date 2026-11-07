@@ -5,7 +5,7 @@
  */
 import { ANSWERS, CHATS, COURSE_STARTERS, COURSES, DYNO_RUNS, NEXT_RUN } from "./mock-data";
 import { cleanCode, cleanName, COURSE_LIMIT, courseNameError } from "../courses";
-import type { Answer, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
+import type { Answer, ChatMessage, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 const SESSION_KEY = "recall-demo";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -189,8 +189,58 @@ export async function ask(courseId: string, question: string): Promise<Answer> {
 const deletedChats = new Set<string>();
 const chatEdits: Record<string, Partial<Pick<ChatSummary, "title" | "pinned">>> = {};
 
+/** Chats saved during this page visit (newest first) and their messages. */
+const createdChats: ChatSummary[] = [];
+const chatMessages: Record<string, ChatMessage[]> = {};
+let messageSeq = 0;
+
 export async function listChats(courseId: string): Promise<ChatSummary[]> {
-  return CHATS.filter((c) => c.courseId === courseId && !deletedChats.has(c.id)).map((c) => ({ ...c, ...chatEdits[c.id] }));
+  // A chat with a new message moves to the top, like the real API (touch_chat).
+  return [...createdChats, ...CHATS]
+    .filter((c) => c.courseId === courseId && !deletedChats.has(c.id))
+    .map((c) => ({ ...c, ...chatEdits[c.id] }));
+}
+
+function exchange(question: string, answer: Answer): ChatMessage[] {
+  const createdAt = new Date().toISOString();
+  return [
+    { id: ++messageSeq, role: "user", content: question, createdAt },
+    { id: ++messageSeq, role: "assistant", content: answer.claims.join(" "), answer: clone(answer), createdAt },
+  ];
+}
+
+export async function createChat(courseId: string, question: string, answer: Answer): Promise<ChatSummary> {
+  await wait(120);
+  const t = cleanName(question);
+  const chat: ChatSummary = {
+    id: `chat-${Date.now()}-${createdChats.length}`,
+    courseId,
+    title: t.length > 60 ? `${t.slice(0, 59)}…` : t || "New chat",
+    group: "Today",
+  };
+  createdChats.unshift(chat);
+  chatMessages[chat.id] = exchange(question, answer);
+  return { ...chat };
+}
+
+export async function addExchange(chatId: string, question: string, answer: Answer): Promise<void> {
+  await wait(80);
+  chatMessages[chatId] = [...(chatMessages[chatId] ?? []), ...exchange(question, answer)];
+  // Move it to the top, as the real API's updated_at ordering would.
+  const i = createdChats.findIndex((c) => c.id === chatId);
+  if (i > 0) createdChats.unshift(...createdChats.splice(i, 1));
+}
+
+export async function listMessages(chatId: string): Promise<ChatMessage[]> {
+  await wait(150);
+  if (chatMessages[chatId]) return clone(chatMessages[chatId]);
+  // The sample chats have no stored messages: show the canned answer that
+  // matches (they share ids with the starters), or the course's first one.
+  const chat = CHATS.find((c) => c.id === chatId);
+  if (!chat) throw new Error("Chat not found.");
+  const starter = Object.values(COURSE_STARTERS).flat().find((s) => s.id === chatId) ?? COURSE_STARTERS[chat.courseId]?.[0];
+  if (!starter) return [];
+  return exchange(starter.question, { ...ANSWERS[starter.id], question: starter.question });
 }
 
 export async function renameChat(id: string, title: string): Promise<void> {

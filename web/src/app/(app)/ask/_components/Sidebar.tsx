@@ -16,6 +16,9 @@ export function Sidebar({
   currentCourse,
   onSelectCourse,
   currentChat,
+  chatsKey,
+  onOpenChat,
+  onDeleteChat,
   glance,
   onNew,
   settings,
@@ -25,6 +28,10 @@ export function Sidebar({
   currentCourse: string;
   onSelectCourse: (id: string) => void;
   currentChat: string | null;
+  /** Changes after each saved question, so the chat list reloads. */
+  chatsKey: number;
+  onOpenChat: (id: string, title: string) => void;
+  onDeleteChat: (id: string) => void;
   glance: Glance | null;
   onNew: () => void;
   settings: Settings;
@@ -74,7 +81,14 @@ export function Sidebar({
           })}
         </nav>
 
-        <ChatList courseId={currentCourse} currentChat={currentChat} calm={settings.calm} />
+        <ChatList
+          courseId={currentCourse}
+          currentChat={currentChat}
+          calm={settings.calm}
+          refreshKey={chatsKey}
+          onOpen={onOpenChat}
+          onDelete={onDeleteChat}
+        />
 
         <GlanceCard course={current} glance={glance} />
       </div>

@@ -6,7 +6,8 @@
  * the function signatures (the contract) stay the same.
  */
 import * as mock from "./mock";
-import type { Answer, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
+import { chatGroup } from "../chat-group";
+import type { Answer, ChatMessage, ChatRecord, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 export * from "./types";
 
@@ -20,6 +21,14 @@ export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API !== "false";
  */
 export const REAL_SESSIONS = process.env.NEXT_PUBLIC_REAL_SESSIONS === "true";
 const MOCK_SESSIONS = USE_MOCK && !REAL_SESSIONS;
+
+/**
+ * Per-feature switch: "true" = saved chats (the Ask sidebar) use the real API.
+ * Needs REAL_SESSIONS too: chats belong to a real session. Answers themselves
+ * stay mocked until the RAG phase. Off in CI.
+ */
+export const REAL_CHATS = REAL_SESSIONS && process.env.NEXT_PUBLIC_REAL_CHATS === "true";
+const MOCK_CHATS = USE_MOCK && !REAL_CHATS;
 
 /** Creating and editing your own courses arrives with Phase 5 (December). */
 const COURSES_READ_ONLY =
@@ -141,23 +150,57 @@ export function ask(courseId: string, question: string): Promise<Answer> {
   return USE_MOCK ? mock.ask(courseId, question) : http("/ask", { method: "POST", body: JSON.stringify({ courseId, question }) });
 }
 
-/** GET /chats?courseId=…: saved chats for one course. */
-export function listChats(courseId: string): Promise<ChatSummary[]> {
-  return USE_MOCK ? mock.listChats(courseId) : http(`/chats?courseId=${encodeURIComponent(courseId)}`);
+/** A chat from the API, with its sidebar group worked out in the browser's timezone. */
+function toSummary(c: ChatRecord): ChatSummary {
+  return { id: c.id, courseId: c.courseId, title: c.title, pinned: c.pinned, updatedAt: c.updatedAt, group: chatGroup(c.updatedAt) };
+}
+
+/** GET /chats?courseId=…: saved chats for one course, pinned first, then newest. */
+export async function listChats(courseId: string): Promise<ChatSummary[]> {
+  if (MOCK_CHATS) return mock.listChats(courseId);
+  const chats = await http<ChatRecord[]>(`/chats?courseId=${encodeURIComponent(courseId)}`);
+  return chats.map(toSummary);
+}
+
+/**
+ * POST /chats: save a new chat with its first question and answer.
+ * Temporary: the browser sends the (mocked) answer. In the RAG phase the
+ * server that writes the answer saves it, and `answer` leaves this call.
+ */
+export async function createChat(courseId: string, question: string, answer: Answer): Promise<ChatSummary> {
+  if (MOCK_CHATS) return mock.createChat(courseId, question, answer);
+  const chat = await http<ChatRecord>("/chats", { method: "POST", body: JSON.stringify({ courseId, question, answer }) });
+  return toSummary(chat);
+}
+
+/** POST /chats/{id}/messages: a follow-up question and its answer, in an open chat. */
+export async function addExchange(chatId: string, question: string, answer: Answer): Promise<void> {
+  if (MOCK_CHATS) return mock.addExchange(chatId, question, answer);
+  await http(`/chats/${chatId}/messages`, { method: "POST", body: JSON.stringify({ question, answer }) });
+}
+
+/** GET /chats/{id}/messages: everything in one chat, oldest first. */
+export function listMessages(chatId: string): Promise<ChatMessage[]> {
+  return MOCK_CHATS ? mock.listMessages(chatId) : http(`/chats/${chatId}/messages`);
 }
 
 /** PATCH /chats/{id}: rename. */
 export function renameChat(id: string, title: string): Promise<void> {
-  return USE_MOCK ? mock.renameChat(id, title) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
+  return MOCK_CHATS ? mock.renameChat(id, title) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
 }
 
 /** PATCH /chats/{id}: pin to the top, or unpin. */
 export function setChatPinned(id: string, pinned: boolean): Promise<void> {
-  return USE_MOCK ? mock.setChatPinned(id, pinned) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ pinned }) });
+  return MOCK_CHATS ? mock.setChatPinned(id, pinned) : http(`/chats/${id}`, { method: "PATCH", body: JSON.stringify({ pinned }) });
 }
 
+/**
+ * DELETE /chats/{id}. Sent when the sidebar's Undo window closes, which can be
+ * while the tab is closing: keepalive lets the request finish after the page
+ * is gone (a normal fetch would be cancelled).
+ */
 export function deleteChat(id: string): Promise<void> {
-  return USE_MOCK ? mock.deleteChat(id) : http(`/chats/${id}`, { method: "DELETE" });
+  return MOCK_CHATS ? mock.deleteChat(id) : http(`/chats/${id}`, { method: "DELETE", keepalive: true });
 }
 
 // ---------- Dyno ----------
