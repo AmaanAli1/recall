@@ -15,12 +15,30 @@ type Group = ChatSummary["group"] | "Pinned";
 
 /**
  * Saved chats for one course, grouped Pinned / Today / This week / Earlier.
+ * Clicking a chat opens it in Ask (onOpen). `refreshKey` changes whenever Ask
+ * saves a question, so the list reloads and the new or updated chat moves up.
  * Each row has a "…" menu: Rename (inline), Pin to top / Unpin, Delete.
  * Delete asks inline first; after confirming, the row disappears and an Undo bar
  * shows. The server delete only happens when the undo window closes, so Undo is
  * a pure client-side restore.
  */
-export function ChatList({ courseId, currentChat, calm }: { courseId: string; currentChat: string | null; calm: boolean }) {
+export function ChatList({
+  courseId,
+  currentChat,
+  calm,
+  refreshKey,
+  onOpen,
+  onDelete,
+}: {
+  courseId: string;
+  currentChat: string | null;
+  calm: boolean;
+  /** Bumped by Ask after each saved question: reload the list. */
+  refreshKey: number;
+  onOpen: (id: string, title: string) => void;
+  /** A chat was deleted (Undo still possible): Ask clears it if it's the open one. */
+  onDelete: (id: string) => void;
+}) {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
@@ -41,7 +59,8 @@ export function ChatList({ courseId, currentChat, calm }: { courseId: string; cu
   // Where focus should land after the next render (the row we just restored or cancelled).
   const focusNext = useRef<HTMLElement | (() => HTMLElement | undefined) | null>(null);
 
-  // Reload whenever the course changes: each course has its own chats.
+  // Reload whenever the course changes (each course has its own chats) and
+  // after Ask saves a question (refreshKey).
   useEffect(() => {
     let live = true;
     listChats(courseId)
@@ -57,17 +76,28 @@ export function ChatList({ courseId, currentChat, calm }: { courseId: string; cu
     return () => {
       live = false;
     };
-  }, [courseId]);
+  }, [courseId, refreshKey]);
 
-  // Leaving the page closes the undo window: send any pending delete.
-  useEffect(
-    () => () => {
+  // Leaving the page closes the undo window: send any pending delete. Unmount
+  // covers moving to another page in the app; "pagehide" covers closing the
+  // tab or reloading, when React never unmounts. deleteChat uses keepalive, so
+  // the request survives the page going away, and the API's DELETE is
+  // idempotent, so sending it twice is harmless.
+  useEffect(() => {
+    const flush = () => {
+      const id = pendingRef.current;
+      if (!id) return;
+      pendingRef.current = null;
+      void deleteChat(id).catch(() => {});
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
       clearTimeout(timer.current);
       clearTimeout(pinTimer.current);
-      if (pendingRef.current) void deleteChat(pendingRef.current).catch(() => {});
-    },
-    [],
-  );
+      flush();
+    };
+  }, []);
 
   useEffect(() => {
     const f = focusNext.current;
@@ -119,6 +149,7 @@ export function ChatList({ courseId, currentChat, calm }: { courseId: string; cu
     setPending(id);
     setConfirming(null);
     setHidden((h) => new Set(h).add(id));
+    onDelete(id);
     timer.current = setTimeout(() => {
       commit(id);
       pendingRef.current = null;
@@ -261,6 +292,11 @@ export function ChatList({ courseId, currentChat, calm }: { courseId: string; cu
                   <>
                     <Link
                       href="/ask"
+                      onClick={(e) => {
+                        // Open in place: Ask is already on screen.
+                        e.preventDefault();
+                        onOpen(c.id, c.title);
+                      }}
                       ref={(el) => {
                         if (el) links.current.set(c.id, el);
                         else links.current.delete(c.id);

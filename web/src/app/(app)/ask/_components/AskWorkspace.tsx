@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ask, listCourses, listDynoRuns, type Answer, type Course, type DynoRun } from "@/lib/api";
+import { addExchange, ask, createChat, listCourses, listDynoRuns, listMessages, type Answer, type Course, type DynoRun } from "@/lib/api";
 import { COURSE_STARTERS } from "@/lib/api/mock-data";
 import { consumeFreshArrival } from "@/lib/demo-flags";
 import { redline } from "@/lib/stats";
@@ -48,10 +48,59 @@ export function AskWorkspace() {
   // Which course questions go to. Switching course stays on Ask.
   const [courseId, setCourseId] = useState(DEFAULT_COURSE);
 
+  // The saved chat that's open: follow-ups go into it. null = "New chat", so
+  // the next question starts a new one.
+  const [chatId, setChatIdState] = useState<string | null>(null);
+  // The conversation the visitor is in right now. "New chat", switching course
+  // or opening a chat starts a new one (a new object). Each save remembers the
+  // conversation it was asked in, so a slow save from an old conversation can
+  // never pull its chat back open after you've moved on.
+  const convo = useRef<{ chatId: string | null }>({ chatId: null });
+  const setChatId = useCallback((id: string | null) => {
+    convo.current = { chatId: id };
+    setChatIdState(id);
+  }, []);
+  // Bumped after each save, so the sidebar reloads its chat list.
+  const [chatsKey, setChatsKey] = useState(0);
+  // A quiet note when a save fails. The answer stays on screen either way.
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  // Saves run one after another. Without this, two quick questions in a new
+  // chat would both see "no chat yet" and create two chats.
+  const saving = useRef<Promise<void>>(Promise.resolve());
+  const saveExchange = useCallback((course: string, question: string, a: Answer) => {
+    const conv = convo.current; // the conversation this question was asked in
+    saving.current = saving.current.then(async () => {
+      try {
+        if (conv.chatId) {
+          await addExchange(conv.chatId, question, a);
+        } else {
+          const chat = await createChat(course, question, a);
+          conv.chatId = chat.id; // later questions in this conversation go into it
+          // Only mark it open if the visitor is still in this conversation.
+          if (convo.current === conv) setChatIdState(chat.id);
+        }
+        if (convo.current === conv) setSaveFailed(false);
+        setChatsKey((k) => k + 1);
+      } catch {
+        if (convo.current === conv) setSaveFailed(true);
+      }
+    });
+  }, []);
+
+  // What "Try again" re-runs: the last ask, or the last chat we tried to open.
+  // Stored as data (not a function) so the callbacks below don't refer to themselves.
+  const lastAction = useRef<
+    { kind: "ask"; question: string; save: boolean; course: string } | { kind: "open"; id: string; title: string } | null
+  >(null);
+
   // Only the latest request may land; an older, slower answer is dropped.
   const reqId = useRef(0);
-  const runAsk = useCallback((question: string, animate: boolean, course = courseId) => {
+  // `save` is false only for the starter answer Ask shows on its own when you
+  // come back: that's not something you asked, so it must not become a chat.
+  const runAsk = useCallback((question: string, save: boolean, course = courseId) => {
     const id = ++reqId.current;
+    lastAction.current = { kind: "ask", question, save, course };
     setPendingQ(question);
     setView("loading");
     setPicked(1);
@@ -61,12 +110,43 @@ export function AskWorkspace() {
         if (id !== reqId.current) return;
         setAnswer(a);
         setView("answer");
-        if (animate) setSeq((n) => n + 1);
+        if (save) {
+          setSeq((n) => n + 1);
+          saveExchange(course, question, a);
+        }
       })
       .catch(() => {
         if (id === reqId.current) setView("error");
       });
-  }, [courseId]);
+  }, [courseId, saveExchange]);
+
+  /** Open a saved chat: show its latest answer, and send follow-ups into it. */
+  const openChat = useCallback((id: string, title: string) => {
+    const req = ++reqId.current;
+    lastAction.current = { kind: "open", id, title };
+    setChatId(id);
+    setSaveFailed(false);
+    setPendingQ(title);
+    setView("loading");
+    setPicked(1);
+    setHover(0);
+    listMessages(id)
+      .then((messages) => {
+        if (req !== reqId.current) return;
+        // Ask shows one answer at a time, so a chat opens on its latest one.
+        const last = messages.filter((m) => m.role === "assistant" && m.answer).at(-1)?.answer;
+        if (last) {
+          setAnswer(last);
+          setView("answer");
+          setSeq((n) => n + 1);
+        } else {
+          setView("empty");
+        }
+      })
+      .catch(() => {
+        if (req === reqId.current) setView("error");
+      });
+  }, [setChatId]);
 
   // First visit after the demo boot opens on the starters; otherwise show the
   // first starter's answer. The ref guards against StrictMode's double effect,
@@ -130,11 +210,13 @@ export function AskWorkspace() {
 
   const newQuestion = useCallback(() => {
     reqId.current++; // drop anything in flight
+    setChatId(null); // the next question starts a new chat
+    setSaveFailed(false);
     setView("empty");
     setPicked(1);
     setHover(0);
     composerInput.current?.focus({ preventScroll: true });
-  }, []);
+  }, [setChatId]);
 
   // "N" starts a new question, like the keycap on the button says.
   useEffect(() => {
@@ -174,12 +256,19 @@ export function AskWorkspace() {
   const selectCourse = useCallback((id: string) => {
     if (id === courseId) return;
     reqId.current++; // a slow answer for the old course must not land
+    setChatId(null);
+    setSaveFailed(false);
     setCourseId(id);
     setAnswer(null);
     setPicked(1);
     setHover(0);
     setView("empty");
-  }, [courseId]);
+  }, [courseId, setChatId]);
+
+  /** The open chat was deleted: go back to a new question. */
+  const chatDeleted = useCallback((id: string) => {
+    if (id === convo.current.chatId) newQuestion();
+  }, [newQuestion]);
 
   const course = courses.find((c) => c.id === courseId);
   const docCount = course ? course.documents.length : null;
@@ -194,8 +283,9 @@ export function AskWorkspace() {
         run: courseId === DEFAULT_COURSE && latest ? { id: latest.id, date: latest.date } : null,
       }
     : null;
-  // The chat matching the open answer is "current" (starters share ids with the sample chats).
-  const currentChat = view === "answer" ? starters.find((q) => q.question === answer?.question)?.id ?? null : null;
+  // The open saved chat is "current". Before anything is saved, the answer Ask
+  // shows on its own matches a sample chat (starters share ids with them).
+  const currentChat = chatId ?? (view === "answer" ? starters.find((q) => q.question === answer?.question)?.id ?? null : null);
 
   const rootCls = [s.ws, instant ? s.instant : "", settings.calm ? s.calm : "", "min-h-0"].join(" ");
 
@@ -207,6 +297,9 @@ export function AskWorkspace() {
           currentCourse={courseId}
           onSelectCourse={selectCourse}
           currentChat={currentChat}
+          chatsKey={chatsKey}
+          onOpenChat={openChat}
+          onDeleteChat={chatDeleted}
           glance={glance}
           onNew={newQuestion}
           settings={settings}
@@ -226,7 +319,11 @@ export function AskWorkspace() {
             hover={hover}
             showTiming={settings.timing}
             onAsk={(q) => runAsk(q, true)}
-            onRetry={() => runAsk(pendingQ, true)}
+            onRetry={() => {
+              const a = lastAction.current;
+              if (a?.kind === "ask") runAsk(a.question, a.save, a.course);
+              else if (a?.kind === "open") openChat(a.id, a.title);
+            }}
             onPick={pick}
             onPeek={setHover}
             onFollowUp={(q) => {
@@ -236,6 +333,11 @@ export function AskWorkspace() {
               el.focus();
             }}
           />
+          {saveFailed && (
+            <p role="status" className="m-0 px-6 pb-1 text-[13px] text-ink-3">
+              Couldn’t save this chat. Your answer is still here.
+            </p>
+          )}
           <Composer
             inputRef={composerInput}
             busy={view === "loading"}
