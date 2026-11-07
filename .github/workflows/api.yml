@@ -1,0 +1,75 @@
+# CI for the FastAPI service in /api: lint, format and
+# tests. Never talks to Supabase or OpenAI (the tests
+# use no real secrets).
+
+name: api
+
+on:
+  # No path filters here on purpose: once api-lint and
+  # api-test are required checks, they must report on
+  # EVERY PR. The `changes` job decides what really runs.
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same PR cancels the older run.
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+  # Job 1: did anything in api/ change?
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # paths-filter reads the PR's changed files
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - '.github/workflows/api.yml'
+
+  # Job 2: Ruff. `check` = lint rules, `format --check`
+  # = fails if any file isn't formatted (it changes
+  # nothing in CI).
+  api-lint:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+      # --locked: fail if uv.lock doesn't match
+      # pyproject.toml (someone forgot to commit it).
+      - run: uv sync --locked
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+
+  # Job 3: pytest.
+  api-test:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+      - run: uv sync --locked
+      - run: uv run pytest
