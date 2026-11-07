@@ -31,6 +31,30 @@ npm run test:unit
 npm run build && npm run test:e2e
 ```
 
+# api
+
+Recall's RAG service (FastAPI, Python 3.12, managed with [uv](https://docs.astral.sh/uv/)): ingest PDFs, retrieve passages, answer with page-level citations. Called only by the Next.js route handler `POST /api/ask`, server to server.
+
+## Run it
+
+```
+cd api
+uv sync                                    # install into api/.venv
+uv run pytest                              # tests
+uv run ruff check                          # lint
+uv run ruff format --check                 # formatting
+uv run fastapi dev src/recall_api/main.py  # http://127.0.0.1:8000/health
+```
+
+Settings come from environment variables or `api/.env` (copy `.env.example`; never commit `.env`).
+
+## Endpoints
+
+| Method | Path | What |
+|---|---|---|
+| GET | `/health` | Liveness check for the load balancer: `{"ok": true}` |
+
+
 ## How changes ship
 
 GitHub Flow: one short-lived branch per change, a pull request with CI

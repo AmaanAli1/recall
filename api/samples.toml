@@ -1,0 +1,43 @@
+# The sample PDFs that `ingest_samples` loads into the
+# shared sample courses. The files themselves live in
+# api/samples/ (gitignored: download them, don't commit).
+#
+# All four are chapters of Jeff Erickson's "Algorithms"
+# (2019), licensed CC BY 4.0: free to share and adapt with
+# credit. Check the licence line on page 1 when you
+# download. sha256 = PowerShell: Get-FileHash <file>
+# (any case; the script compares in lowercase).
+
+# Algorithms course: 00000000-0000-0000-0000-00000000c001
+
+[[document]]
+course_id = "00000000-0000-0000-0000-00000000c001"
+file = "01-recursion.pdf"
+name = "Erickson_Ch1_Recursion.pdf"
+source_url = "https://jeffe.cs.illinois.edu/teaching/algorithms/book/01-recursion.pdf"
+license = "CC BY 4.0 (Jeff Erickson, Algorithms, 2019)"
+sha256 = "a4cd5e6377e38892c5ed50607d5d7b94fdb703c849d869bd819190171189095d"
+
+[[document]]
+course_id = "00000000-0000-0000-0000-00000000c001"
+file = "03-dynprog.pdf"
+name = "Erickson_Ch3_DynamicProgramming.pdf"
+source_url = "https://jeffe.cs.illinois.edu/teaching/algorithms/book/03-dynprog.pdf"
+license = "CC BY 4.0 (Jeff Erickson, Algorithms, 2019)"
+sha256 = "d6cde639507e1f3b6de3e1eb7069fdad71e279b87dd1b31ed6fc7a9cfcd6797c"
+
+[[document]]
+course_id = "00000000-0000-0000-0000-00000000c001"
+file = "04-greedy.pdf"
+name = "Erickson_Ch4_GreedyAlgorithms.pdf"
+source_url = "https://jeffe.cs.illinois.edu/teaching/algorithms/book/04-greedy.pdf"
+license = "CC BY 4.0 (Jeff Erickson, Algorithms, 2019)"
+sha256 = "ceb162189ce7e9223656fdbae9b83dbb92bc3a258d82c57b02c01f645f55f090"
+
+[[document]]
+course_id = "00000000-0000-0000-0000-00000000c001"
+file = "08-sssp.pdf"
+name = "Erickson_Ch8_ShortestPaths.pdf"
+source_url = "https://jeffe.cs.illinois.edu/teaching/algorithms/book/08-sssp.pdf"
+license = "CC BY 4.0 (Jeff Erickson, Algorithms, 2019)"
+sha256 = "1651550e14ec0d4b4d069841689bdc966311f4344c4a3db489805f0ab387d77b"

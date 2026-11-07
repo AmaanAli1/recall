@@ -19,6 +19,19 @@ dependencies = [
     # Reads settings from environment variables and
     # api/.env, with types checked at startup.
     "pydantic-settings>=2.16.2",
+    # PyMuPDF: reads the text of each PDF page.
+    # Licence: AGPL-3.0 (fine for a public repo; see D3).
+    "pymupdf>=2.1",
+    # OpenAI's SDK: embeddings now, answers in Phase 4.
+    # It retries rate limits and server errors itself.
+    "openai>=3.46.0",
+    # Postgres driver for the laptop ingest script.
+    # [binary] = ships its own compiled library, so
+    # nothing else to install on Windows.
+    "psycopg[binary]>=3.3.8",
+    # Reads glyph names out of fonts embedded in a PDF, to
+    # recover characters the PDF doesn't name (pdf.py).
+    "fonttools>=4.68.0",
 ]
 
 # Tools only needed while developing and in CI,
