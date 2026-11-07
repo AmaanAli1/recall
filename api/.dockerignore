@@ -1,0 +1,9 @@
+# Never copied into the image: local environments,
+# secrets, caches, tests and the sample PDFs.
+.venv/
+.env
+samples/
+tests/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

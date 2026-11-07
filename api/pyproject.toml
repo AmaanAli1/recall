@@ -1,0 +1,48 @@
+# The Python project for Recall's RAG service.
+# uv reads this file: `uv sync` installs everything
+# listed here into api/.venv, and uv.lock pins the
+# exact versions so CI, Docker and your laptop all
+# get the same ones.
+
+[project]
+name = "recall-api"
+version = "0.1.0"
+description = "Recall's RAG service: ingest PDFs, retrieve passages, answer with citations."
+readme = "README.md"
+# 3.12 only: the same version in .python-version,
+# CI and the Docker image.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # FastAPI plus its "standard" extras: uvicorn (the
+    # server), the `fastapi dev` command and httpx.
+    "fastapi[standard]>=0.162.0",
+    # Reads settings from environment variables and
+    # api/.env, with types checked at startup.
+    "pydantic-settings>=2.16.2",
+]
+
+# Tools only needed while developing and in CI,
+# never installed in the Docker image.
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+# How to package src/recall_api so `import recall_api`
+# works everywhere (tests, the server, Docker).
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F = the basics (pyflakes, pycodestyle), I = sorted
+# imports, B = likely bugs, UP = modern Python syntax.
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -28,6 +28,8 @@ __pycache__/
 .ruff_cache/
 mlruns/
 
+# Sample lecture PDFs (downloaded, not committed: see api/samples.toml) api/samples/
+
 # misc
 .DS_Store
 *.pem
