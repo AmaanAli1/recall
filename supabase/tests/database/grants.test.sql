@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(16);
 
 select table_privs_are(
   'public', 'demo_sessions', 'authenticated',
@@ -65,6 +65,42 @@ select table_privs_are(
   'public', 'messages', 'anon',
   array[]::text[],
   'not-signed-in users have no access to messages');
+
+
+-- Documents + chunks: read only in v1 (the admin 
+-- script writes them; visitor uploads are December).
+select table_privs_are(
+  'public', 'documents', 'authenticated',
+  array['SELECT'],
+  'visitors can only read documents');
+ 
+select table_privs_are(
+  'public', 'documents', 'anon',
+  array[]::text[],
+  'not-signed-in users have no access to documents');
+ 
+select table_privs_are(
+  'public', 'chunks', 'authenticated',
+  array['SELECT'],
+  'visitors can only read chunks');
+ 
+select table_privs_are(
+  'public', 'chunks', 'anon',
+  array[]::text[],
+  'not-signed-in users have no access to chunks');
+ 
+-- The two RAG functions: signed-in visitors only.
+-- (Postgres grants new functions to PUBLIC, which
+-- anon is part of, unless the migration revokes it.)
+select ok(
+  not has_function_privilege('anon',
+    'public.match_chunks(extensions.vector, uuid, integer)', 'execute'),
+  'anon cannot execute match_chunks');
+ 
+select ok(
+  not has_function_privilege('anon',
+    'public.spend_tokens(integer)', 'execute'),
+  'anon cannot execute spend_tokens');
 
 select * from finish();
 rollback;
