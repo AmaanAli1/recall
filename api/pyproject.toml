@@ -22,7 +22,7 @@ dependencies = [
     # PyMuPDF: reads the text of each PDF page.
     # Licence: AGPL-3.0 (fine for a public repo; see D3).
     "pymupdf>=2.1",
-    # OpenAI's SDK: embeddings now, answers in Phase 4.
+    # OpenAI's SDK: embeddings and answers.
     # It retries rate limits and server errors itself.
     "openai>=3.46.0",
     # Postgres driver for the laptop ingest script.
@@ -32,6 +32,10 @@ dependencies = [
     # Reads glyph names out of fonts embedded in a PDF, to
     # recover characters the PDF doesn't name (pdf.py).
     "fonttools>=4.68.0",
+    # HTTP client for talking to Supabase's REST API as the
+    # visitor (db.py). FastAPI's extras install it too, but
+    # we import it ourselves, so we say so.
+    "httpx>=0.28.1",
 ]
 
 # Tools only needed while developing and in CI,
