@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # Dyno experiment later).
     openai_answer_model: str = "gpt-5.4-mini"
 
+    # If even the best passage is less similar than this, the
+    # course doesn't cover the question: answer "not found"
+    # without calling the answer model. A starting guess, to
+    # be tuned with Dyno (ANSWER_MIN_SIMILARITY).
+    answer_min_similarity: float = 0.25
+
 
 @lru_cache
 def get_settings() -> Settings:
