@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
+import { DemoLink, StandbyOnArrival } from "@/components/DemoLink";
+import { DEMO_STANDBY } from "@/lib/demo-standby";
 import { endDemoSession, getDemoSession } from "@/lib/api";
 import { ArrowRight } from "./icons";
 import styles from "./landing.module.css";
@@ -22,6 +24,8 @@ export function Hero() {
   const [saved, setSaved] = useState<Saved | null>(null);
 
   useEffect(() => {
+    // Demo on standby: nothing to resume, so don't look for a session.
+    if (DEMO_STANDBY) return;
     let alive = true;
     getDemoSession()
       .then((s) => {
@@ -50,6 +54,7 @@ export function Hero() {
 
   return (
     <section aria-labelledby="hero-h" className="relative mx-auto flex max-w-[1200px] flex-wrap items-center gap-14 px-6 pb-24 pt-[88px]">
+      <StandbyOnArrival />
       {/* Ruled notebook paper with a red margin line. */}
       <div
         className="relative min-w-0 flex-[1_1_520px] pl-10"
@@ -69,9 +74,9 @@ export function Hero() {
           Recall reads your lecture PDFs, scores every passage against your question, and shows the exact page each answer came from.
         </p>
         <div className={`${styles.rise} mt-9 flex flex-wrap items-center gap-5`} style={{ animationDelay: "280ms" }}>
-          <Link href={href} className="btn btn-red inline-flex items-center gap-3 rounded-[5px] py-[11px] pl-5 pr-[11px] text-base font-medium">
+          <DemoLink href={href} className="btn btn-red inline-flex items-center gap-3 rounded-[5px] py-[11px] pl-5 pr-[11px] text-base font-medium">
             {saved ? "Resume your demo" : "Try the demo"} <kbd className="kbd" aria-hidden="true">⏎</kbd>
-          </Link>
+          </DemoLink>
           <a href="#pipeline" className="lnk lnk-hl text-base font-medium text-ink">
             See how it works
           </a>
@@ -91,7 +96,7 @@ export function Hero() {
       </div>
 
       <div className={`${styles.rise} min-w-0 flex-[1_1_400px]`} style={{ animationDelay: "320ms" }}>
-        <Link href={href} className={`sheet ${styles.heroCard}`} aria-label="See the full answer with its sources">
+        <DemoLink href={href} className={`sheet ${styles.heroCard} w-full text-left`} aria-label="See the full answer with its sources">
           <div className={`ear ${styles.heroEdge} p-px`}>
             <div className="ear bg-sheet px-7 pb-6 pt-[26px]">
               <div className="flex justify-between font-mono text-xs text-ink-2">
@@ -120,7 +125,7 @@ export function Hero() {
             </div>
           </div>
           <span className="fold fold-red" aria-hidden="true" />
-        </Link>
+        </DemoLink>
       </div>
     </section>
   );

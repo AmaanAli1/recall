@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BuildStatus } from "./BuildStatus";
+import { DemoLink } from "./DemoLink";
 import { Logo } from "./Logo";
 
 /**
@@ -24,7 +25,7 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
             <li><Link href={`${base}#pipeline`} className="lnk-hl text-ink-2">How it works</Link></li>
             <li><Link href={`${base}#spec`} className="lnk-hl text-ink-2">Spec sheet</Link></li>
             <li><Link href="/dyno" className="lnk-hl text-ink-2">Dyno results</Link></li>
-            <li><Link href="/demo" className="lnk-hl text-ink-2">Try the demo</Link></li>
+            <li><DemoLink className="lnk-hl text-ink-2">Try the demo</DemoLink></li>
           </ul>
         </nav>
         <nav aria-labelledby="f-builder" className="flex-[1_1_140px]">
