@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { Answer } from "@/lib/api";
-import type { View } from "./AnswerSheet";
+import { excerpt } from "@/lib/excerpt";
 import s from "../ask.module.css";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -10,14 +11,24 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export function SourcesPane({
   view,
   answer,
+  answerKey,
+  forQuestion,
+  visible,
   picked,
   hover,
   onPick,
   onPeek,
   cardRef,
 }: {
-  view: View;
+  /** empty = nothing asked yet; loading = the shown turn is on its way; answer = its sources. */
+  view: "boot" | "empty" | "loading" | "answer";
   answer: Answer | null;
+  /** Which turn these sources belong to (resets the "Show full passage" toggles). */
+  answerKey: number | null;
+  /** Set when the conversation has several answers: whose sources these are. */
+  forQuestion?: string | null;
+  /** While a new answer types in, only the cards of finished claims show. */
+  visible?: number;
   picked: number;
   hover: number;
   onPick: (n: number, keyboard: boolean) => void;
@@ -25,6 +36,15 @@ export function SourcesPane({
   cardRef: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const showing = view === "answer" && answer;
+  // Cards opened to their full passage, as "turnKey-n".
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   return (
     <aside aria-labelledby="src-h" className={s.paneRight}>
       <div className="mb-4 flex items-baseline justify-between">
@@ -33,6 +53,11 @@ export function SourcesPane({
           {showing ? `${answer.sources.length} cited, ${answer.dropped.length} dropped` : ""}
         </span>
       </div>
+      {showing && forQuestion && (
+        <p className="-mt-2 mb-4 truncate text-[13px] text-ink-3" title={forQuestion}>
+          For: {forQuestion}
+        </p>
+      )}
 
       {view === "empty" && (
         <div className={`${s.swapIn} ${s.dashed}`}>
@@ -57,14 +82,20 @@ export function SourcesPane({
       {showing && !answer.notFound && (
         <>
           <div className="flex flex-col gap-3.5">
-            {answer.sources.map((src) => {
+            {answer.sources.filter((src) => visible === undefined || src.n <= visible).map((src) => {
               const on = src.n === picked;
               const peek = hover === src.n && !on;
+              const id = `${answerKey}-${src.n}`;
+              const full = open.has(id);
+              // The quote with a little context; the whole passage on request.
+              const cut = excerpt(src.pre, src.post);
+              const pre = full ? src.pre : cut.pre;
+              const post = full ? src.post : cut.post;
               return (
                 <div
-                  key={`${answer.question}-${src.n}`}
+                  key={id}
                   ref={(el) => cardRef(src.n, el)}
-                  className={`sheet relative ${peek ? s.peek : ""}`}
+                  className={`sheet relative ${peek ? s.peek : ""} ${visible !== undefined ? s.swapIn : ""}`}
                   onMouseEnter={() => onPeek(src.n)}
                   onMouseLeave={() => onPeek(0)}
                 >
@@ -84,9 +115,9 @@ export function SourcesPane({
                         <span className="num">p.&nbsp;{src.page}</span>
                       </span>
                       <span className={`${s.srcBody} ${on ? s.srcBodyOn : ""}`}>
-                        {src.pre}
-                        {on ? <mark className={s.swipe}>{src.hit}</mark> : <span>{src.hit}</span>}
-                        {src.post}
+                        {pre}
+                        <mark className={on ? s.swipe : s.hit}>{src.hit}</mark>
+                        {post}
                       </span>
                       <span className="mt-3 flex items-center gap-2.5">
                         <span className="h-0.5 flex-auto bg-line">
@@ -98,6 +129,20 @@ export function SourcesPane({
                         <span className="num font-mono text-xs">{src.score.toFixed(2)}</span>
                       </span>
                     </button>
+                    {cut.trimmed && (
+                      // Outside the card's button: a button can't hold another button.
+                      <p className={`${s.more} bg-[var(--sheet)]`}>
+                        <button
+                          type="button"
+                          className="lnk lnk-hl border-0 bg-transparent p-0 text-[13px] text-ink-2"
+                          aria-expanded={full}
+                          aria-label={full ? `Show less of source ${src.n}` : `Show full passage for source ${src.n}`}
+                          onClick={() => toggle(id)}
+                        >
+                          {full ? "Show less" : "Show full passage"}
+                        </button>
+                      </p>
+                    )}
                   </div>
                   <span aria-hidden="true" className={`fold ${on ? "fold-red" : ""}`} />
                 </div>

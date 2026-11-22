@@ -4,7 +4,7 @@
  * mock the API module with REAL_ASK = true and check what the page does
  * with what /api/ask returns.
  */
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Answer, ChatSummary, Course } from "@/lib/api";
@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
   addExchange: vi.fn(),
   listCourses: vi.fn(),
   listChats: vi.fn(),
+  listMessages: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -32,6 +33,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   addExchange: api.addExchange,
   listCourses: api.listCourses,
   listChats: api.listChats,
+  listMessages: api.listMessages,
   listDynoRuns: async () => [],
   getDemoSession: async () => null,
 }));
@@ -82,7 +84,8 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
-  window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+  // Reduced motion on: answers appear at once here (the typing effect has its own tests).
+  window.matchMedia ??= ((q: string) => ({ matches: q.includes("reduce"), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
   Element.prototype.scrollIntoView ??= () => {};
 });
 
@@ -129,9 +132,66 @@ describe("Ask with real answers", () => {
     await ask("First?");
     await screen.findByRole("heading", { level: 1, name: "First?" });
     await ask("Second?");
-    await screen.findByRole("heading", { level: 1, name: "Second?" });
+    await screen.findByRole("heading", { level: 2, name: "Second?" });
 
     expect(api.askAndSave).toHaveBeenNthCalledWith(2, ALGO, "Second?", "c1");
+    // The first question and its answer are still there, above the follow-up.
+    expect(screen.getByRole("heading", { level: 1, name: "First?" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Answer to First?" })).toBeInTheDocument();
+  });
+
+  it("a citation in an earlier answer switches Sources to that answer, labelled", async () => {
+    const two = (q: string, file: string) =>
+      answerFor(q, { sources: [{ n: 1, file, page: 3, score: 0.6, pre: "", hit: "h", post: "" }] as Answer["sources"] });
+    api.askAndSave
+      .mockResolvedValueOnce({ answer: two("First?", "First.pdf"), chat: chat("c1"), saved: true })
+      .mockResolvedValueOnce({ answer: two("Second?", "Second.pdf"), chat: chat("c1"), saved: true });
+    render(<AskWorkspace />);
+    await screen.findByText("Ask anything about Algorithms.");
+    await ask("First?");
+    await screen.findByRole("region", { name: "Answer to First?" });
+    await ask("Second?");
+    const sources = screen.getByRole("complementary", { name: "Sources" });
+    expect(await within(sources).findByText("Second.pdf")).toBeInTheDocument();
+    expect(within(sources).getByText("For: Second?")).toBeInTheDocument();
+
+    const first = screen.getByRole("region", { name: "Answer to First?" });
+    await userEvent.click(within(first).getByRole("button", { name: /Show source 1/ }));
+
+    expect(within(sources).getByText("First.pdf")).toBeInTheDocument();
+    expect(within(sources).getByText("For: First?")).toBeInTheDocument();
+    expect(within(sources).queryByText("Second.pdf")).not.toBeInTheDocument();
+  });
+
+  it("opening a saved chat shows the whole conversation", async () => {
+    api.listChats.mockResolvedValue([{ ...chat("c9"), title: "Shortest paths" }]);
+    api.listMessages.mockResolvedValue([
+      { id: 1, role: "user", content: "First?", createdAt: "" },
+      { id: 2, role: "assistant", content: "a", answer: answerFor("First?"), createdAt: "" },
+      { id: 3, role: "user", content: "Second?", createdAt: "" },
+      { id: 4, role: "assistant", content: "b", answer: answerFor("Second?"), createdAt: "" },
+    ]);
+    render(<AskWorkspace />);
+    await userEvent.click(await screen.findByRole("link", { name: "Shortest paths" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "First?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Second?" })).toBeInTheDocument();
+    expect(api.listMessages).toHaveBeenCalledWith("c9");
+  });
+
+  it("Try again asks the failed question again in its place", async () => {
+    const { ApiError } = await import("@/lib/api");
+    api.askAndSave
+      .mockRejectedValueOnce(new ApiError(504, "That took too long to answer. Please try again."))
+      .mockResolvedValueOnce({ answer: answerFor("Q?"), chat: chat("c1"), saved: true });
+    render(<AskWorkspace />);
+    await screen.findByText("Ask anything about Algorithms.");
+    await ask("Q?");
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("region", { name: "Answer to Q?" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Q?" })).toHaveLength(1); // replaced, not added
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("starts a separate chat when New is pressed while an answer is in flight", async () => {

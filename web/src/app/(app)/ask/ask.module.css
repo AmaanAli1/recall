@@ -112,6 +112,19 @@
 
 .h1 { margin: 0; font-weight: 400; font-size: 30px; line-height: 36px; letter-spacing: -0.022em; }
 
+/* The conversation: each turn has its own Q. in the margin, and turns after
+   the first sit two ruled lines lower, with a dashed rule between them. */
+.tqMark { position: absolute; left: -54px; top: 2px; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--red); }
+.turnNext { margin-top: 72px; }
+.turnNext::before { content: ""; position: absolute; left: 0; right: 0; top: -36px; border-top: 1px dashed var(--line-2); }
+
+/* The typing caret while a new answer appears. */
+.caret {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 3px; vertical-align: -0.15em;
+  background: var(--red); animation: caret 900ms steps(2, jump-none) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
 /* Starter question chips with a highlighter sweep */
 .starter {
   display: inline-flex; align-items: center; gap: 12px; max-width: 100%; text-align: left; font: inherit; font-size: 17px; line-height: 1.4;
@@ -165,6 +178,12 @@
 .edgeOn { background: var(--red); }
 .srcBody { display: block; margin-top: 10px; font-size: 14px; line-height: 1.7; font-weight: 400; color: var(--ink-2); }
 .srcBodyOn { color: var(--ink); }
+/* The quoted words are always marked; the picked card's sweeps in brighter. */
+.hit {
+  color: var(--ink); background-color: transparent;
+  background-image: linear-gradient(180deg, transparent 50%, var(--sheet-2) 50%, var(--sheet-2) 94%, transparent 94%);
+}
+.more { margin: 0; padding: 0 18px 12px; }
 .swipe {
   background-color: transparent; color: var(--ink);
   background-image: linear-gradient(180deg, transparent 50%, var(--hl) 50%, var(--hl) 94%, transparent 94%);
@@ -202,7 +221,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .swipe, .ansIn, .swapIn, .skel { animation: none; }
+  .swipe, .ansIn, .swapIn, .skel, .caret { animation: none; }
   .claim, .starter, .starterQ, .starterGo, .setPop, .sw, .swK, .setBtn svg { transition: none; }
   .cite:active, .card:active, .starter:active { transform: none; }
   .peek .card { transform: none; }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { REAL_ASK, addExchange, ask, askAndSave, createChat, listCourses, listDynoRuns, listMessages, type Answer, type Course, type DynoRun } from "@/lib/api";
 import { COURSE_STARTERS } from "@/lib/api/mock-data";
 import { askErrorText } from "@/lib/ask-errors";
 import { consumeFreshArrival } from "@/lib/demo-flags";
 import { hasRealDocuments } from "@/lib/real-documents";
 import { redline } from "@/lib/stats";
+import { latestAnswered, messagesToTurns, turnKey, type Turn } from "@/lib/thread";
 import { AnswerSheet, type View } from "./AnswerSheet";
 import { Composer } from "./Composer";
 import { Sidebar } from "./Sidebar";
@@ -36,10 +37,14 @@ export function AskWorkspace() {
   const cards = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const [view, setView] = useState<View>("boot");
-  const [answer, setAnswer] = useState<Answer | null>(null);
+  // The conversation: every question asked in this chat, oldest first.
+  const [turns, setTurns] = useState<Turn[]>([]);
+  // The turn whose sources show (the newest, unless a citation in an older one was clicked).
+  const [activeKey, setActiveKey] = useState<number | null>(null);
+  // For new answers: how many claims have finished typing, per turn.
+  const [revealed, setRevealed] = useState<Record<number, number>>({});
+  // The chat's title while it opens (and if opening it failed).
   const [pendingQ, setPendingQ] = useState("");
-  // Bumps on every user-triggered answer so the sheet replays its entrance.
-  const [seq, setSeq] = useState(0);
   const [picked, setPicked] = useState(1);
   const [hover, setHover] = useState(0);
   // A keyboard pick (click with detail 0) jumps without sweeps or smooth scroll.
@@ -66,9 +71,15 @@ export function AskWorkspace() {
   const [chatsKey, setChatsKey] = useState(0);
   // A quiet note when a save fails. The answer stays on screen either way.
   const [saveFailed, setSaveFailed] = useState(false);
-  // Why the last ask failed, when the server said (budget spent, too many
-  // questions, took too long…). null = the generic "couldn't reach" line.
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Reduced motion: answers appear at once and scrolling jumps. (Server render: no motion.)
+  const reduceMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => true);
+  const animate = !reduceMotion && !settings.calm;
+
+  /** Change one turn in place. */
+  const patchTurn = useCallback((key: number, patch: Partial<Turn>) => {
+    setTurns((ts) => ts.map((t) => (t.key === key ? { ...t, ...patch } : t)));
+  }, []);
 
   // Saves run one after another. Without this, two quick questions in a new
   // chat would both see "no chat yet" and create two chats.
@@ -102,15 +113,25 @@ export function AskWorkspace() {
   // Only the latest request may land; an older, slower answer is dropped.
   const reqId = useRef(0);
   // `save` is false only for the starter answer Ask shows on its own when you
-  // come back: that's not something you asked, so it must not become a chat.
+  // come back (mock only): that's not something you asked, so it must not
+  // become a chat, and the first real question replaces it.
   const runAsk = useCallback((question: string, save: boolean, course = courseId) => {
     const id = ++reqId.current;
     lastAction.current = { kind: "ask", question, save, course };
-    setPendingQ(question);
-    setView("loading");
-    setErrorMsg(null);
+    const key = turnKey();
+    // The question goes at the bottom of the conversation, with loading lines under it.
+    setTurns((ts) => [...(save ? ts.filter((t) => !t.sample) : []), { key, question, status: "loading", fresh: save, sample: !save }]);
+    setView("thread");
+    setActiveKey(key);
     setPicked(1);
     setHover(0);
+
+    const land = (a: Answer) => {
+      if (id === reqId.current) patchTurn(key, { status: "answer", answer: a });
+    };
+    const fail = (message: string | null) => {
+      if (id === reqId.current) patchTurn(key, { status: "error", errorMsg: message });
+    };
 
     if (REAL_ASK && save) {
       // Real answers: the server asks the RAG service AND saves the chat, so
@@ -127,61 +148,51 @@ export function AskWorkspace() {
             setChatsKey((k) => k + 1); // the sidebar reloads (new chat, or moved to the top)
           }
           if (convo.current === conv) setSaveFailed(!r.saved);
-          if (id !== reqId.current) return;
-          setAnswer(r.answer);
-          setView("answer");
-          setSeq((n) => n + 1);
+          land(r.answer);
         })
-        .catch((e: unknown) => {
-          if (id !== reqId.current) return;
-          setErrorMsg(askErrorText(e)); // e.g. "Too many questions in a minute…"
-          setView("error");
-        });
+        .catch((e: unknown) => fail(askErrorText(e))); // e.g. "Too many questions in a minute…"
       return;
     }
 
     ask(course, question)
       .then((a) => {
-        if (id !== reqId.current) return;
-        setAnswer(a);
-        setView("answer");
-        if (save) {
-          setSeq((n) => n + 1);
-          saveExchange(course, question, a);
-        }
+        land(a);
+        if (save && id === reqId.current) saveExchange(course, question, a);
       })
-      .catch(() => {
-        if (id === reqId.current) setView("error");
-      });
-  }, [courseId, saveExchange]);
+      .catch(() => fail(null));
+  }, [courseId, saveExchange, patchTurn]);
 
-  /** Open a saved chat: show its latest answer, and send follow-ups into it. */
+  /** Open a saved chat: the whole conversation, scrolled to its newest answer. */
   const openChat = useCallback((id: string, title: string) => {
     const req = ++reqId.current;
     lastAction.current = { kind: "open", id, title };
     setChatId(id);
     setSaveFailed(false);
     setPendingQ(title);
+    setTurns([]);
     setView("loading");
     setPicked(1);
     setHover(0);
     listMessages(id)
       .then((messages) => {
         if (req !== reqId.current) return;
-        // Ask shows one answer at a time, so a chat opens on its latest one.
-        const last = messages.filter((m) => m.role === "assistant" && m.answer).at(-1)?.answer;
-        if (last) {
-          setAnswer(last);
-          setView("answer");
-          setSeq((n) => n + 1);
-        } else {
-          setView("empty");
-        }
+        const opened = messagesToTurns(messages);
+        setTurns(opened);
+        setActiveKey(opened.at(-1)?.key ?? null);
+        setView(opened.length ? "thread" : "empty");
       })
       .catch(() => {
         if (req === reqId.current) setView("error");
       });
   }, [setChatId]);
+  /** "Try again": the failed question is asked again in its place. */
+  const retry = useCallback(() => {
+    const a = lastAction.current;
+    if (a?.kind === "ask") {
+      setTurns((ts) => (ts.at(-1)?.status === "error" ? ts.slice(0, -1) : ts));
+      runAsk(a.question, a.save, a.course);
+    } else if (a?.kind === "open") openChat(a.id, a.title);
+  }, [runAsk, openChat]);
 
   // First visit after the demo boot opens on the starters; otherwise show the
   // first starter's answer. The ref guards against StrictMode's double effect,
@@ -250,6 +261,7 @@ export function AskWorkspace() {
     reqId.current++; // drop anything in flight
     setChatId(null); // the next question starts a new chat
     setSaveFailed(false);
+    setTurns([]);
     setView("empty");
     setPicked(1);
     setHover(0);
@@ -297,7 +309,7 @@ export function AskWorkspace() {
     setChatId(null);
     setSaveFailed(false);
     setCourseId(id);
-    setAnswer(null);
+    setTurns([]);
     setPicked(1);
     setHover(0);
     setView("empty");
@@ -323,7 +335,25 @@ export function AskWorkspace() {
     : null;
   // The open saved chat is "current". Before anything is saved, the answer Ask
   // shows on its own matches a sample chat (starters share ids with them).
-  const currentChat = chatId ?? (view === "answer" ? starters.find((q) => q.question === answer?.question)?.id ?? null : null);
+  const sample = turns[0]?.sample ? turns[0] : null;
+  const currentChat = chatId ?? (sample ? starters.find((q) => q.question === sample.question)?.id ?? null : null);
+
+  // Sources follow the active turn; if it failed, the newest answered one.
+  const active = turns.find((t) => t.key === activeKey && t.status !== "error");
+  const shownTurn = active ?? latestAnswered(turns);
+  const answeredCount = turns.filter((t) => t.status === "answer").length;
+  const lastTurn = turns.at(-1);
+  // A fresh answer that's typing in shows the cards of its finished claims only.
+  const typingIn = !!shownTurn?.fresh && animate && !shownTurn.answer?.notFound;
+
+  /** A citation was clicked: that turn's sources show, with [n] picked. */
+  const pickIn = useCallback((key: number, n: number, keyboard: boolean) => {
+    setActiveKey(key);
+    pick(n, keyboard);
+  }, [pick]);
+  const onRevealed = useCallback((key: number, claims: number) => {
+    setRevealed((r) => (r[key] === claims ? r : { ...r, [key]: claims }));
+  }, []);
 
   const rootCls = [s.ws, instant ? s.instant : "", settings.calm ? s.calm : "", "min-h-0"].join(" ");
 
@@ -347,25 +377,23 @@ export function AskWorkspace() {
         <div className={s.paneMain}>
           <AnswerSheet
             view={view}
-            answer={answer}
+            turns={turns}
+            activeKey={shownTurn?.key ?? null}
             pendingQ={pendingQ}
-            seq={seq}
             docCount={docCount}
             courseName={course?.name ?? "Algorithms"}
             starters={starters}
-            errorMsg={errorMsg}
             sampleOnly={REAL_ASK && !hasRealDocuments(courseId)}
             picked={picked}
             hover={hover}
             showTiming={settings.timing}
+            animate={animate}
+            smooth={animate && !instant}
             onAsk={(q) => runAsk(q, true)}
-            onRetry={() => {
-              const a = lastAction.current;
-              if (a?.kind === "ask") runAsk(a.question, a.save, a.course);
-              else if (a?.kind === "open") openChat(a.id, a.title);
-            }}
-            onPick={pick}
+            onRetry={retry}
+            onPick={pickIn}
             onPeek={setHover}
+            onRevealed={onRevealed}
             onFollowUp={(q) => {
               const el = composerInput.current;
               if (!el) return;
@@ -380,26 +408,51 @@ export function AskWorkspace() {
           )}
           <Composer
             inputRef={composerInput}
-            busy={view === "loading"}
+            busy={view === "loading" || lastTurn?.status === "loading"}
             courseName={course?.name ?? "Algorithms"}
             sample={course?.sample ?? true}
             credit={REAL_ASK && hasRealDocuments(courseId)}
             empty={docCount === 0}
-            followUp={view === "answer"}
+            followUp={view === "thread" && lastTurn?.status === "answer"}
             onAsk={(q) => runAsk(q, true)}
           />
         </div>
 
         <SourcesPane
-          view={view}
-          answer={answer}
+          view={
+            shownTurn
+              ? shownTurn.status === "loading"
+                ? "loading"
+                : "answer"
+              : view === "boot"
+                ? "boot"
+                : view === "loading"
+                  ? "loading"
+                  : "empty"
+          }
+          answer={shownTurn?.answer ?? null}
+          answerKey={shownTurn?.key ?? null}
+          forQuestion={answeredCount > 1 ? shownTurn?.question : null}
+          visible={typingIn && shownTurn ? (revealed[shownTurn.key] ?? 0) : undefined}
           picked={picked}
           hover={hover}
-          onPick={pick}
+          onPick={(n, keyboard) => pick(n, keyboard)}
           onPeek={setHover}
           cardRef={cardRef}
         />
       </div>
     </div>
   );
+}
+
+// prefers-reduced-motion, read with useSyncExternalStore so it can change while Ask is open.
+const REDUCE = "(prefers-reduced-motion: reduce)";
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(REDUCE).matches;
+}
+function subscribeReducedMotion(onChange: () => void): () => void {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const m = window.matchMedia(REDUCE);
+  m.addEventListener?.("change", onChange);
+  return () => m.removeEventListener?.("change", onChange);
 }

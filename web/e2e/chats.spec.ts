@@ -61,7 +61,10 @@ test.describe("saved chats", () => {
     const box = page.getByRole("textbox", { name: "Ask about Algorithms" });
     await box.fill("And what should I use instead?");
     await box.press("Enter");
-    await expect(page.getByRole("region", { name: "Answer" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Answer to And what should I use instead?" })).toBeVisible();
+    // The first question and its answer stay on the sheet, above the follow-up.
+    await expect(heading(page)).toHaveText(DIJKSTRA);
+    await expect(page.getByRole("region", { name: `Answer to ${DIJKSTRA}` })).toBeVisible();
 
     await expect(chats(page).getByRole("link")).toHaveCount(SAMPLE_CHATS + 1);
     await expect(chats(page).getByRole("link").first()).toHaveAttribute("aria-current", "true");
@@ -82,6 +85,25 @@ test.describe("saved chats", () => {
     await chats(page).getByRole("link", { name: DIJKSTRA }).click();
     await expect(heading(page)).toHaveText(DIJKSTRA);
     await expect(chats(page).getByRole("link", { name: DIJKSTRA })).toHaveAttribute("aria-current", "true");
+  });
+
+  test("reopening a chat shows every question and answer in it", async ({ page }) => {
+    await freshArrival(page);
+    await page.goto("/ask");
+    await page.getByRole("button", { name: DIJKSTRA }).click();
+    const box = page.getByRole("textbox", { name: "Ask about Algorithms" });
+    await expect(page.getByRole("region", { name: `Answer to ${DIJKSTRA}` })).toBeVisible();
+    await box.fill("And what should I use instead?");
+    await box.press("Enter");
+    await expect(page.getByRole("region", { name: "Answer to And what should I use instead?" })).toBeVisible();
+
+    // Leave the chat, then open it again from the sidebar.
+    await page.getByRole("button", { name: /^New chat/ }).click();
+    await expect(heading(page)).toHaveText("Ask anything about Algorithms.");
+    await chats(page).getByRole("link", { name: DIJKSTRA }).click();
+
+    await expect(heading(page)).toHaveText(DIJKSTRA);
+    await expect(page.getByRole("heading", { level: 2, name: "And what should I use instead?" })).toBeVisible();
   });
 
   test("deleting the open chat returns Ask to the starters", async ({ page }) => {
