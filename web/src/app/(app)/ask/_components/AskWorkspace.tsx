@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { addExchange, ask, createChat, listCourses, listDynoRuns, listMessages, type Answer, type Course, type DynoRun } from "@/lib/api";
+import { REAL_ASK, addExchange, ask, askAndSave, createChat, listCourses, listDynoRuns, listMessages, type Answer, type Course, type DynoRun } from "@/lib/api";
 import { COURSE_STARTERS } from "@/lib/api/mock-data";
+import { askErrorText } from "@/lib/ask-errors";
 import { consumeFreshArrival } from "@/lib/demo-flags";
+import { hasRealDocuments } from "@/lib/real-documents";
 import { redline } from "@/lib/stats";
 import { AnswerSheet, type View } from "./AnswerSheet";
 import { Composer } from "./Composer";
@@ -64,6 +66,9 @@ export function AskWorkspace() {
   const [chatsKey, setChatsKey] = useState(0);
   // A quiet note when a save fails. The answer stays on screen either way.
   const [saveFailed, setSaveFailed] = useState(false);
+  // Why the last ask failed, when the server said (budget spent, too many
+  // questions, took too long…). null = the generic "couldn't reach" line.
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Saves run one after another. Without this, two quick questions in a new
   // chat would both see "no chat yet" and create two chats.
@@ -103,8 +108,38 @@ export function AskWorkspace() {
     lastAction.current = { kind: "ask", question, save, course };
     setPendingQ(question);
     setView("loading");
+    setErrorMsg(null);
     setPicked(1);
     setHover(0);
+
+    if (REAL_ASK && save) {
+      // Real answers: the server asks the RAG service AND saves the chat, so
+      // there's no saveExchange here. Only one ask runs per conversation (the
+      // composer is locked while an answer loads), so no queue is needed.
+      // `conv` is captured: if New is pressed mid-answer, this answer's chat
+      // id must not leak into the new conversation.
+      const conv = convo.current;
+      askAndSave(course, question, conv.chatId)
+        .then((r) => {
+          if (r.chat) {
+            conv.chatId = r.chat.id; // later questions in this conversation go into it
+            if (convo.current === conv) setChatIdState(r.chat.id);
+            setChatsKey((k) => k + 1); // the sidebar reloads (new chat, or moved to the top)
+          }
+          if (convo.current === conv) setSaveFailed(!r.saved);
+          if (id !== reqId.current) return;
+          setAnswer(r.answer);
+          setView("answer");
+          setSeq((n) => n + 1);
+        })
+        .catch((e: unknown) => {
+          if (id !== reqId.current) return;
+          setErrorMsg(askErrorText(e)); // e.g. "Too many questions in a minute…"
+          setView("error");
+        });
+      return;
+    }
+
     ask(course, question)
       .then((a) => {
         if (id !== reqId.current) return;
@@ -163,7 +198,10 @@ export function AskWorkspace() {
       if (wanted && wanted !== DEFAULT_COURSE) {
         setCourseId(wanted);
         setView("empty");
-      } else if (fresh) setView("empty");
+      } else if (fresh || REAL_ASK) setView("empty");
+      // Mock only: show a sample answer on a return visit. With real answers
+      // that would call the model (and spend tokens) on every visit, so real
+      // mode always opens on the starters and waits for a click.
       else runAsk(COURSE_STARTERS[DEFAULT_COURSE][0].question, false);
     });
   }, [runAsk]);
@@ -315,6 +353,8 @@ export function AskWorkspace() {
             docCount={docCount}
             courseName={course?.name ?? "Algorithms"}
             starters={starters}
+            errorMsg={errorMsg}
+            sampleOnly={REAL_ASK && !hasRealDocuments(courseId)}
             picked={picked}
             hover={hover}
             showTiming={settings.timing}
@@ -343,6 +383,7 @@ export function AskWorkspace() {
             busy={view === "loading"}
             courseName={course?.name ?? "Algorithms"}
             sample={course?.sample ?? true}
+            credit={REAL_ASK && hasRealDocuments(courseId)}
             empty={docCount === 0}
             followUp={view === "answer"}
             onAsk={(q) => runAsk(q, true)}

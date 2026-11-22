@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import type { Answer } from "@/lib/api";
 import type { Starter } from "@/lib/api/mock-data";
+import { NOT_FOUND_TEXT } from "@/lib/ask";
 import s from "../ask.module.css";
 
 /** "boot" = before we know whether this is a fresh arrival: the sheet stays blank. */
@@ -20,6 +21,10 @@ export function AnswerSheet(props: {
   docCount: number | null;
   courseName: string;
   starters: Starter[];
+  /** Why the last ask failed, in words the server chose; null = generic. */
+  errorMsg?: string | null;
+  /** Real answers are on, but this course has no real documents yet. */
+  sampleOnly?: boolean;
   picked: number;
   hover: number;
   showTiming: boolean;
@@ -42,7 +47,7 @@ export function AnswerSheet(props: {
           <div className={s.swapIn} role="alert">
             <h1 className={`${s.h1} max-w-[24em]`}>{props.pendingQ}</h1>
             <p className="m-0 text-[15px] leading-9 text-ink-2">
-              Recall couldn’t reach your notes just now.{" "}
+              {props.errorMsg ?? "Recall couldn’t reach your notes just now."}{" "}
               <button type="button" className="lnk lnk-hl border-0 bg-transparent p-0 text-ink" onClick={props.onRetry}>
                 Try again
               </button>
@@ -55,7 +60,27 @@ export function AnswerSheet(props: {
   );
 }
 
-function Starters({ docCount, courseName, starters, onAsk }: { docCount: number | null; courseName: string; starters: Starter[]; onAsk: (q: string) => void }) {
+/** Shown wherever a course's answers can't be real yet. */
+const SAMPLE_ONLY_TEXT =
+  "This course’s PDFs are placeholders for now. Only Algorithms has real documents in this demo, so questions here come back as not found.";
+
+function SampleOnlyNote() {
+  return <p className="m-0 mt-3 max-w-[40em] text-sm leading-7 text-ink-3">{SAMPLE_ONLY_TEXT}</p>;
+}
+
+function Starters({
+  docCount,
+  courseName,
+  starters,
+  sampleOnly,
+  onAsk,
+}: {
+  docCount: number | null;
+  courseName: string;
+  starters: Starter[];
+  sampleOnly?: boolean;
+  onAsk: (q: string) => void;
+}) {
   if (docCount === 0) {
     return (
       <div className={s.swapIn}>
@@ -73,17 +98,24 @@ function Starters({ docCount, courseName, starters, onAsk }: { docCount: number 
     <div className={s.swapIn}>
       <h1 className={`${s.h1} max-w-[22em]`}>Ask anything about {courseName}.</h1>
       <p className="m-0 max-w-[40em] text-[15px] leading-9 text-ink-2">
-        Answers come only from the {docCount != null ? `${docCount} ` : ""}lecture PDFs in this course, each claim cited to its page.
+        {sampleOnly
+          ? SAMPLE_ONLY_TEXT
+          : `Answers come only from the ${docCount != null ? `${docCount} ` : ""}lecture PDFs in this course, each claim cited to its page.`}
       </p>
-      <p className="m-0 mt-9 text-[13px] leading-9 text-ink-3">Try one of these</p>
-      <div className="mt-0.5 flex flex-col items-start gap-2">
-        {starters.map((q) => (
-          <button key={q.id} type="button" className={s.starter} onClick={() => onAsk(q.question)}>
-            <span className={s.starterQ}>{q.question}</span>
-            <span className={s.starterGo} aria-hidden="true">→</span>
-          </button>
-        ))}
-      </div>
+      {/* No real documents here, so a starter could only come back not found. */}
+      {!sampleOnly && (
+        <>
+          <p className="m-0 mt-9 text-[13px] leading-9 text-ink-3">Try one of these</p>
+          <div className="mt-0.5 flex flex-col items-start gap-2">
+            {starters.map((q) => (
+              <button key={q.id} type="button" className={s.starter} onClick={() => onAsk(q.question)}>
+                <span className={s.starterQ}>{q.question}</span>
+                <span className={s.starterGo} aria-hidden="true">→</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <p className="m-0 mt-9 text-sm leading-9 text-ink-2">
         Or type your own below. Recall says so when your notes don’t cover it.
       </p>
@@ -112,6 +144,7 @@ function AnswerBody({
   seq,
   docCount,
   courseName,
+  sampleOnly,
   picked,
   hover,
   showTiming,
@@ -135,36 +168,52 @@ function AnswerBody({
 
       <TimingBar timing={t} hidden={!showTiming} />
 
-      <section id="answer" aria-label="Answer" aria-live="polite" className="relative mt-9">
-        <span aria-hidden="true" className={s.aMark}>A.</span>
-        <p className="m-0 max-w-[38em] text-lg font-normal leading-9">
-          {answer.claims.map((c, i) => {
-            const n = i + 1;
-            const on = n === picked;
-            const peek = n === hover && !on;
-            return (
-              <Fragment key={n}>
-                {i > 0 && " "}
-                <span className={`${s.claim} ${on ? s.claimOn : ""} ${peek ? s.claimPeek : ""}`}>{c}</span>{" "}
-                <button
-                  type="button"
-                  className={`${s.cite} ${on ? s.citeOn : peek ? s.citePeek : ""}`}
-                  aria-label={lbl(n)}
-                  aria-pressed={on}
-                  onClick={(e) => onPick(n, e.detail === 0)}
-                  onMouseEnter={() => onPeek(n)}
-                  onMouseLeave={() => onPeek(0)}
-                  onFocus={() => onPeek(n)}
-                  onBlur={() => onPeek(0)}
-                >
-                  [{n}]
-                </button>
-                .
-              </Fragment>
-            );
-          })}
-        </p>
-      </section>
+      {answer.notFound ? (
+        // Nothing in the course was close enough to answer from: say so
+        // plainly instead of guessing. (No model was called.)
+        <section id="answer" aria-label="Answer" aria-live="polite" className="relative mt-9">
+          <span aria-hidden="true" className={s.aMark}>A.</span>
+          <p className="m-0 max-w-[38em] text-lg font-normal leading-9">{NOT_FOUND_TEXT}</p>
+          {sampleOnly ? (
+            <SampleOnlyNote />
+          ) : (
+            <p className="m-0 mt-3 max-w-[40em] text-sm leading-7 text-ink-3">
+              Try different words, or a question about what this course covers.
+            </p>
+          )}
+        </section>
+      ) : (
+        <section id="answer" aria-label="Answer" aria-live="polite" className="relative mt-9">
+          <span aria-hidden="true" className={s.aMark}>A.</span>
+          <p className="m-0 max-w-[38em] text-lg font-normal leading-9">
+            {answer.claims.map((c, i) => {
+              const n = i + 1;
+              const on = n === picked;
+              const peek = n === hover && !on;
+              return (
+                <Fragment key={n}>
+                  {i > 0 && " "}
+                  <span className={`${s.claim} ${on ? s.claimOn : ""} ${peek ? s.claimPeek : ""}`}>{c}</span>{" "}
+                  <button
+                    type="button"
+                    className={`${s.cite} ${on ? s.citeOn : peek ? s.citePeek : ""}`}
+                    aria-label={lbl(n)}
+                    aria-pressed={on}
+                    onClick={(e) => onPick(n, e.detail === 0)}
+                    onMouseEnter={() => onPeek(n)}
+                    onMouseLeave={() => onPeek(0)}
+                    onFocus={() => onPeek(n)}
+                    onBlur={() => onPeek(0)}
+                  >
+                    [{n}]
+                  </button>
+                  .
+                </Fragment>
+              );
+            })}
+          </p>
+        </section>
+      )}
 
       <div className="mt-[22px] flex flex-wrap gap-2">
         {answer.followUps.map((f) => (
@@ -186,26 +235,38 @@ const STEPS = [
 
 /** Time per pipeline step; segment widths are proportional to seconds. */
 function TimingBar({ timing, hidden }: { timing: Answer["timing"]; hidden: boolean }) {
-  const total = STEPS.reduce((n, st) => n + timing[st.key], 0) || 1;
+  // Steps that took no time (no reranker yet; no model call for "not found")
+  // are left out: a 0-wide segment's label would sit on top of its neighbours.
+  const steps = STEPS.filter((st) => timing[st.key] > 0);
+  const total = steps.reduce((n, st) => n + timing[st.key], 0) || 1;
   return (
     <div role="group" aria-label="Time spent per step" className={`mt-2 ${hidden ? s.timingOff : ""}`}>
       <div className="flex h-1 gap-0.5">
-        {STEPS.map((st) => (
-          <span key={st.key} className="block" style={{ flex: `${timing[st.key]} 1 0`, background: st.color }} />
+        {steps.map((st) => (
+          // Shares of the total, not raw seconds: flex-grow values that add up
+          // to less than 1 (a 0.5 s answer) would leave part of the bar empty.
+          <span key={st.key} className="block" style={{ flex: `${timing[st.key] / total} 1 0%`, background: st.color }} />
         ))}
       </div>
       <div className="num mt-1.5 flex gap-0.5 font-mono text-xs leading-[26px] text-ink-2">
-        {STEPS.map((st, i) => {
+        {steps.map((st, i) => {
           // Too narrow a segment can't fit its time, so it shows just the step name.
-          const narrow = timing[st.key] / total < 0.1;
+          const share = timing[st.key] / total;
+          const narrow = share < 0.1;
+          // A sliver (search often takes 0.1 s of 2.6 s) can't fit even its name:
+          // the label stays for screen readers only.
+          const sliver = share < 0.06;
           return (
             <span
               key={st.key}
-              className={`${st.key === "rerank" ? "text-red" : ""} ${i === STEPS.length - 1 ? "text-right" : ""}`}
-              style={{ flex: `${timing[st.key]} 1 0` }}
+              // min-w-0 + clip: on a phone a label is cut off instead of running into the next one.
+              className={`min-w-0 overflow-hidden whitespace-nowrap ${st.key === "rerank" ? "text-red" : ""} ${i === steps.length - 1 ? "text-right" : ""}`}
+              style={{ flex: `${share} 1 0%` }}
             >
-              {st.key}
-              {!narrow && <>&nbsp;{fmtS(timing[st.key])}</>}
+              <span className={sliver ? "sr-only" : ""}>
+                {st.key}
+                {!narrow && <>&nbsp;{fmtS(timing[st.key])}</>}
+              </span>
             </span>
           );
         })}

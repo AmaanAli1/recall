@@ -174,6 +174,11 @@ export async function deleteDocument(_courseId: string, documentId: string): Pro
   deletedDocs.add(documentId);
 }
 
+/** Was this document deleted in this tab? (Library deletes are mocked until visitor uploads.) */
+export function isDeletedDoc(documentId: string): boolean {
+  return deletedDocs.has(documentId);
+}
+
 // ---------- ask ----------
 
 export async function ask(courseId: string, question: string): Promise<Answer> {

@@ -47,7 +47,14 @@ export function SourcesPane({
         </p>
       )}
 
-      {showing && (
+      {showing && answer.notFound && (
+        <div className={`${s.swapIn} ${s.dashed}`}>
+          <p className="m-0 font-medium text-ink">Nothing here was close enough to cite.</p>
+          <p className="m-0 mt-1.5">Recall only answers from this course’s documents, so it didn’t guess.</p>
+        </div>
+      )}
+
+      {showing && !answer.notFound && (
         <>
           <div className="flex flex-col gap-3.5">
             {answer.sources.map((src) => {

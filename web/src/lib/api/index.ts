@@ -7,6 +7,7 @@
  */
 import * as mock from "./mock";
 import { chatGroup } from "../chat-group";
+import { REAL_DOCUMENTS } from "../real-documents";
 import type { Answer, ChatMessage, ChatRecord, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 export * from "./types";
@@ -29,6 +30,14 @@ const MOCK_SESSIONS = USE_MOCK && !REAL_SESSIONS;
  */
 export const REAL_CHATS = REAL_SESSIONS && process.env.NEXT_PUBLIC_REAL_CHATS === "true";
 const MOCK_CHATS = USE_MOCK && !REAL_CHATS;
+
+/**
+ * Per-feature switch: "true" = Ask gets real answers from POST /api/ask (the
+ * RAG service), and the server saves them into the chat. Needs REAL_CHATS
+ * too: real answers are saved into real chats. Off in CI, so e2e tests keep
+ * running on the mock. Set in Vercel (Preview first, then Production).
+ */
+export const REAL_ASK = REAL_CHATS && process.env.NEXT_PUBLIC_REAL_ASK === "true";
 
 /** Creating and editing your own courses arrives with Phase 5 (December). */
 const COURSES_READ_ONLY =
@@ -89,8 +98,15 @@ export function endDemoSession(): Promise<void> {
 export async function listCourses(): Promise<Course[]> {
   if (MOCK_SESSIONS) return mock.listCourses();
   const courses = await http<Course[]>("/courses");
-  // Real courses, mocked documents (until the RAG phase).
-  return USE_MOCK ? mock.withMockDocuments(courses) : courses;
+  // Real courses, mocked documents (until visitor uploads)...
+  const withDocs = USE_MOCK ? mock.withMockDocuments(courses) : courses;
+  // ...except where answers are real: there, list what they really come from.
+  // (A delete in Library is still mocked, so it only hides the row in this tab.)
+  if (!REAL_ASK) return withDocs;
+  return withDocs.map((c) => {
+    const real = REAL_DOCUMENTS[c.id];
+    return real ? { ...c, documents: real.filter((d) => !mock.isDeletedDoc(d.id)) } : c;
+  });
 }
 
 /**
@@ -148,6 +164,28 @@ export function deleteDocument(courseId: string, documentId: string): Promise<vo
 /** POST /ask: answer a question from one course's documents, with citations. */
 export function ask(courseId: string, question: string): Promise<Answer> {
   return USE_MOCK ? mock.ask(courseId, question) : http("/ask", { method: "POST", body: JSON.stringify({ courseId, question }) });
+}
+
+/** What POST /api/ask returns: the answer, and the chat it was saved into. */
+export interface AskResult {
+  answer: Answer;
+  /** The chat the exchange was saved into; null if saving failed. */
+  chat: ChatSummary | null;
+  /** false = the answer is real but couldn't be saved (show a quiet note). */
+  saved: boolean;
+}
+
+/**
+ * POST /api/ask: a real, cited answer from the course's documents (RAG). The
+ * SERVER saves the question and the answer: into `chatId`, or into a new chat
+ * when it's null. The browser never sends an answer to store.
+ */
+export async function askAndSave(courseId: string, question: string, chatId: string | null): Promise<AskResult> {
+  const r = await http<{ answer: Answer; chat: ChatRecord | null; saved: boolean }>("/ask", {
+    method: "POST",
+    body: JSON.stringify({ courseId, question, ...(chatId ? { chatId } : {}) }),
+  });
+  return { answer: r.answer, chat: r.chat ? toSummary(r.chat) : null, saved: r.saved };
 }
 
 /** A chat from the API, with its sidebar group worked out in the browser's timezone. */
