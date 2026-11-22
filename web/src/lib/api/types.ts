@@ -85,6 +85,8 @@ export interface Answer {
   /** Seconds per pipeline step, for the timing bar. */
   timing: { embed: number; search: number; rerank: number; generate: number };
   followUps: string[];
+  /** True when the course's documents don't answer the question (no claims, no sources). */
+  notFound?: boolean;
 }
 
 export interface ChatSummary {
