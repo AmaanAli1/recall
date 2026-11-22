@@ -6,7 +6,7 @@ export const PHASES = ["Design", "Skeleton", "Baseline RAG", "Dyno v1", "Retriev
 
 export const BUILD = {
   /** Index into PHASES of the phase being built now. */
-  current: 2,
+  current: 3,
   /** Roughly how far into the current phase, 0–1. */
-  progress: 0.15,
+  progress: 0.05,
 };
