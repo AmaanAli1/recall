@@ -39,6 +39,23 @@ test.describe("ask", () => {
     await expect(card.locator("mark")).toHaveText("sorting by value/weight and taking items greedily fails");
   });
 
+  test("a citation in an earlier answer switches Sources to that answer", async ({ page }) => {
+    await freshArrival(page);
+    await page.goto("/ask");
+    await page.getByRole("button", { name: "Why does Dijkstra fail with negative edges?" }).click();
+    await expect(sources(page).getByText("Week3_GraphSearch.pdf").first()).toBeVisible();
+    const box = page.getByRole("textbox", { name: "Ask about Algorithms" });
+    await box.fill("When does dynamic programming beat a greedy approach?");
+    await box.press("Enter");
+    await expect(sources(page).getByText("For: When does dynamic programming beat a greedy approach?")).toBeVisible();
+    await expect(sources(page).getByText("Week3_GraphSearch.pdf")).toHaveCount(0);
+
+    const first = page.getByRole("region", { name: "Answer to Why does Dijkstra fail with negative edges?" });
+    await first.getByRole("button", { name: /^Show source 2/ }).click();
+    await expect(sources(page).getByText("For: Why does Dijkstra fail with negative edges?")).toBeVisible();
+    await expect(sources(page).getByRole("button", { name: /^\[2\] Week3_GraphSearch\.pdf/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("deleting a chat asks first, and Undo restores it", async ({ page }) => {
     await page.goto("/ask");
     const chats = page.getByRole("navigation", { name: "Chats" });
