@@ -1,5 +1,6 @@
 # The API's container image. Written in Phase 2, first
-# built in Phase 5 (Docker Desktop / AWS).
+# built in Phase 5 by GitHub Actions (api-deploy.yml),
+# which pushes it to Amazon ECR for AWS Lambda.
 #
 # Two stages: "builder" has uv and installs the
 # dependencies; the final image copies only the
@@ -42,10 +43,21 @@ RUN useradd --create-home --uid 10001 app
 COPY --from=builder --chown=app:app /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
+# AWS Lambda Web Adapter: inside Lambda it starts next to
+# uvicorn and turns Lambda's events into normal HTTP
+# requests, so the app needs no Lambda-specific code.
+# Anywhere else (your laptop, CI) it never runs.
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter
+# Tell it where uvicorn listens, and to wait until
+# /health answers before sending the first request.
+ENV AWS_LWA_PORT=8000 \
+    AWS_LWA_READINESS_CHECK_PATH=/health
+
 USER app
 WORKDIR /app
 EXPOSE 8000
 
 # 0.0.0.0 = accept connections from outside the
-# container (the load balancer); 127.0.0.1 wouldn't.
+# container (the adapter, or docker run -p); 127.0.0.1
+# wouldn't.
 CMD ["uvicorn", "recall_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
