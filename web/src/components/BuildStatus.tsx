@@ -12,8 +12,9 @@ export function BuildStatus() {
   const pct = ((BUILD.current + BUILD.progress) / n) * 100;
   const done = PHASES.slice(0, BUILD.current);
   const now = PHASES[BUILD.current];
-  const label = `Build progress: Phase ${BUILD.current} of ${n - 1}, ${now}. ${done.join(" and ")} ${done.length === 1 ? "is" : "are"} done.`;
-  const title = PHASES.map((p, i) => `${i} ${p}${i < BUILD.current ? " ✓" : i === BUILD.current ? " (building)" : ""}`).join(" · ");
+  // People count phases from 1; PHASES is indexed from 0.
+  const label = `Build progress: Phase ${BUILD.current + 1} of ${n}, ${now}. ${done.join(" and ")} ${done.length === 1 ? "is" : "are"} done.`;
+  const title = PHASES.map((p, i) => `${i + 1} ${p}${i < BUILD.current ? " ✓" : i === BUILD.current ? " (building)" : ""}`).join(" · ");
 
   return (
     <div className={s.bw} role="img" aria-label={label} title={title} style={{ "--p": `${pct.toFixed(1)}%` } as React.CSSProperties}>
@@ -47,7 +48,7 @@ export function BuildStatus() {
       </div>
       <p className={`${s.cap} num`}>
         <span>
-          Building <strong className="font-medium text-ink">Phase {BUILD.current}: {now}</strong>
+          Building <strong className="font-medium text-ink">Phase {BUILD.current + 1}: {now}</strong>
         </span>
         <span className="font-mono text-xs text-ink-3">{BUILD.current} of {n} done</span>
       </p>
