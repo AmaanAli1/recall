@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CreditLine } from "@/components/CreditLine";
 import type { RefObject } from "react";
 import s from "../ask.module.css";
 
@@ -10,6 +11,7 @@ export function Composer({
   busy,
   courseName,
   sample,
+  credit,
   empty,
   followUp,
   onAsk,
@@ -19,6 +21,8 @@ export function Composer({
   courseName: string;
   /** Sample courses ship with every demo; others are the visitor's own. */
   sample: boolean;
+  /** Answers come from the real Erickson chapters: show the CC BY credit. */
+  credit?: boolean;
   /** No documents yet: nothing to answer from, so asking is disabled. */
   empty: boolean;
   /** Inside an open chat the box asks a follow-up; on a fresh chat it starts one. */
@@ -69,6 +73,7 @@ export function Composer({
           Add your own PDFs in Library →
         </Link>
       </p>
+      {credit && <CreditLine className="mt-1" />}
     </form>
   );
 }

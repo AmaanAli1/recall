@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  REAL_ASK,
   createCourse,
   deleteCourse,
   deleteDocument,
@@ -16,6 +17,7 @@ import {
   type CourseInput,
 } from "@/lib/api";
 import { courseLabel } from "@/lib/courses";
+import { CreditLine } from "@/components/CreditLine";
 import { CourseDialog, type DialogMode } from "./CourseDialog";
 import { CourseMenu } from "./CourseMenu";
 import { CourseTabs, PANEL_ID, tabId } from "./CourseTabs";
@@ -337,6 +339,7 @@ export function LibraryScreen() {
               <span aria-hidden="true" className="h-[7px] w-[7px] flex-none rounded-full bg-good shadow-[0_0_0_3px_rgba(11,112,70,0.14)]" />
               Your demo comes with 3 sample courses. Add your own PDFs to any of them, or start a new course.
             </p>
+            {REAL_ASK && <CreditLine className="mt-1.5" />}
           </div>
           <button
             type="button"
