@@ -23,6 +23,8 @@ export type FakeResult = { data?: unknown; error?: { code?: string; message?: st
 export const fake = {
   /** The signed-in visitor, or null for "no session cookie". */
   claims: null as null | { sub: string },
+  /** The visitor's access token (getSession), for routes that forward it. */
+  accessToken: null as null | string,
   /** What each awaited query returns, in order. */
   results: [] as FakeResult[],
   /** Every query the route started, in order. */
@@ -30,6 +32,7 @@ export const fake = {
   /** Start each test from a clean state (call it in beforeEach). */
   reset() {
     this.claims = { sub: "user-1" };
+    this.accessToken = "visitor-token";
     this.results = [];
     this.queries = [];
   },
@@ -66,6 +69,10 @@ export function fakeClient() {
   return {
     auth: {
       getClaims: async () => ({ data: fake.claims ? { claims: fake.claims } : null, error: null }),
+      getSession: async () => ({
+        data: { session: fake.accessToken ? { access_token: fake.accessToken } : null },
+        error: null,
+      }),
     },
     from: (table: string) => {
       const q = new FakeQuery(table);
