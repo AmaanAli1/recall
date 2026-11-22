@@ -73,3 +73,38 @@ jobs:
           version: "0.11.32"
       - run: uv sync --locked
       - run: uv run pytest
+
+  # Job 4: the container image. Built on GitHub's machine
+  # (no Docker needed on a laptop), then started and
+  # checked, so a broken Dockerfile fails the PR instead of
+  # the deploy. Nothing is pushed anywhere.
+  api-image:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (same flags as api-deploy.yml)
+        run: docker build --provenance=false --platform linux/amd64 -t recall-api:ci .
+      - name: Start it with no secrets and check /health
+        run: |
+          docker run -d --name api -p 8000:8000 recall-api:ci
+          # Give uvicorn a few seconds to start.
+          for i in $(seq 1 20); do
+            curl --fail --silent http://127.0.0.1:8000/health && break
+            sleep 1
+          done
+          echo
+          curl --fail --silent --show-error http://127.0.0.1:8000/health
+          echo
+      - name: Show logs if it failed
+        if: failure()
+        run: docker logs api || true
+      - name: No secrets, PDFs or tests inside the image
+        run: |
+          docker run --rm recall-api:ci ls -a /app | tee files.txt
+          if grep -qE '^(\.env|samples|tests)$' files.txt; then
+            echo "::error::.env, samples/ or tests/ ended up in the image"; exit 1
+          fi
+      - name: Runs as the non-root user
+        run: test "$(docker run --rm recall-api:ci id -u)" = "10001"

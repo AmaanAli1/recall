@@ -1,0 +1,112 @@
+# Deploy the FastAPI service to AWS Lambda.
+#
+# Started by hand: Actions -> api-deploy -> Run workflow ->
+# pick staging or production. Staging first, check it,
+# then production (the same release routine as `db push`).
+#
+#   1. Build the image from api/ (on GitHub's machine, so
+#      no Docker is needed on a laptop) and push it to
+#      Amazon ECR, tagged with the commit's SHA.
+#   2. Point the chosen Lambda function at that image.
+#   3. Check the function's /health answers.
+#
+# No AWS keys are stored in GitHub: the job proves who it
+# is with GitHub's OIDC token, and AWS hands it a role
+# that lasts one hour and may only push this one image
+# and update these two functions.
+
+name: api-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which Lambda function to update
+        type: choice
+        options: [staging, production]
+        default: staging
+
+# Two deploys to the same target never overlap; a second
+# one waits for the first instead of cancelling it.
+concurrency:
+  group: api-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # lets the job ask GitHub for its OIDC token
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: recall-api
+  IMAGE_TAG: ${{ github.sha }}
+  # staging -> recall-api-staging, production -> recall-api
+  FUNCTION: ${{ inputs.target == 'production' && 'recall-api' || 'recall-api-staging' }}
+
+jobs:
+  deploy:
+    # Only from main: what's deployed is always what was
+    # reviewed and merged. (The AWS role checks this too.)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to AWS (OIDC, no stored keys)
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          # A repository *variable*, not a secret: a role ARN
+          # isn't secret, it only works for this repo's main.
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log Docker in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the image (skipped if this commit's image exists)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+          # Tags are immutable in ECR, so the same commit is
+          # built once: deploying it to production later
+          # reuses the exact image staging was tested with.
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+               --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "Image $IMAGE_TAG already in ECR, not rebuilding."
+          else
+            # --provenance=false: Lambda only accepts a plain
+            # single-platform image, not the multi-part
+            # "image index" Docker builds by default.
+            docker build --provenance=false --platform linux/amd64 -t "$IMAGE_URI" api
+            docker push "$IMAGE_URI"
+          fi
+
+      - name: Point the Lambda function at the new image
+        run: |
+          if ! aws lambda get-function --function-name "$FUNCTION" > /dev/null 2>&1; then
+            # First run ever: the function is created in the
+            # console from this image (see PHASE5 steps).
+            echo "::warning::$FUNCTION doesn't exist yet. Image pushed: $IMAGE_URI"
+            echo "SKIP_HEALTH=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          aws lambda update-function-code --function-name "$FUNCTION" \
+            --image-uri "$IMAGE_URI" > /dev/null
+          # Wait until Lambda has switched to the new image.
+          aws lambda wait function-updated --function-name "$FUNCTION"
+          echo "$FUNCTION now runs $IMAGE_URI"
+
+      - name: Check /health
+        if: env.SKIP_HEALTH != '1'
+        run: |
+          URL=$(aws lambda get-function-url-config --function-name "$FUNCTION" \
+                  --query FunctionUrl --output text)
+          # The first request after a deploy is a cold start
+          # (a few seconds), hence the generous timeout.
+          curl --fail --silent --show-error --max-time 60 \
+               --retry 3 --retry-delay 5 "${URL}health"
+          echo
+          echo "Healthy: ${URL}"
