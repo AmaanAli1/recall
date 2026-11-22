@@ -32,7 +32,8 @@ test.describe("app shell", () => {
   test("footer shows the build status and the builder links", async ({ page }) => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
-    await expect(footer.getByRole("img", { name: /^Build progress: Phase 2 of 6/ })).toBeVisible();
+    // Not tied to the current phase (that changes as the build moves on): Phase N of 7, counted from 1.
+    await expect(footer.getByRole("img", { name: /^Build progress: Phase [1-7] of 7, / })).toBeVisible();
     await expect(footer.getByRole("link", { name: "LinkedIn" })).toHaveAttribute("href", "https://www.linkedin.com/in/amaan-ali-85967a1b1/");
     await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/AmaanAli1");
     await expect(footer.getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:amaan.ali99@yahoo.com");
