@@ -11,6 +11,11 @@ test.describe("app shell", () => {
   });
 
   test("demo chip opens, closes with Escape, and confirms before starting fresh", async ({ page }) => {
+    // The chip only shows for a visitor with a session (mock mode keeps it in localStorage).
+    await page.addInitScript(() => {
+      const now = new Date().toISOString();
+      window.localStorage.setItem("recall-demo", JSON.stringify({ id: "demo-AB12-CD", createdAt: now, lastActiveAt: now }));
+    });
     await page.goto("/library");
     const chip = page.getByRole("button", { name: /Demo · kept 24/ });
     await chip.click();
@@ -21,6 +26,20 @@ test.describe("app shell", () => {
     await expect(dialog.getByRole("button", { name: "Delete and restart" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(chip).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("without a demo session the header offers Start the demo, which issues one @mobile", async ({ page }) => {
+    await page.goto("/dyno");
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("button", { name: /Demo · kept 24/ })).toHaveCount(0);
+    const start = header.getByRole("link", { name: "Start the demo" });
+    await expect(start).toHaveAttribute("href", "/demo");
+    await start.click();
+    await expect(page.getByRole("heading", { level: 1, name: "Your demo notebook is ready." })).toBeVisible();
+    await page.getByRole("link", { name: /Open my notebook/ }).click();
+    await expect(page).toHaveURL(/\/ask$/);
+    // Now there is a session, so the chip is back.
+    await expect(page.getByRole("banner").getByRole("button", { name: /Demo · kept 24/ })).toBeVisible();
   });
 
   test("skip link moves focus to the main content", async ({ page }) => {

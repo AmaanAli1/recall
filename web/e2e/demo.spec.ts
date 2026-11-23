@@ -33,6 +33,34 @@ test.describe("demo boot", () => {
     await expect(sid).toHaveText(first ?? "");
   });
 
+  test("?next= continues to the page the visitor wanted (sent here by the session gate)", async ({ page }) => {
+    await page.goto("/demo?next=%2Flibrary%3Fcourse%3D00000000-0000-0000-0000-00000000c001");
+    await expect(page.getByRole("heading", { name: "Your demo notebook is ready." })).toBeVisible();
+    await page.getByRole("link", { name: /Open my notebook/ }).click();
+    await expect(page).toHaveURL(/\/library\?course=00000000-0000-0000-0000-00000000c001$/);
+  });
+
+  test("?next= can't send anyone off the site or to another page", async ({ page }) => {
+    // A fresh visitor: the notebook link falls back to Ask.
+    await page.goto("/demo?next=https%3A%2F%2Fevil.example");
+    await expect(page.getByRole("heading", { name: "Your demo notebook is ready." })).toBeVisible(); // session issued
+    await expect(page.getByRole("link", { name: /Open my notebook/ })).toHaveAttribute("href", "/ask");
+    // Now with a session, /demo redirects straight away: still only ever to Ask.
+    for (const next of ["https%3A%2F%2Fevil.example", "%2F%2Fevil.example", "%2Fdyno"]) {
+      await page.goto(`/demo?next=${next}`);
+      await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/ask$/);
+    }
+  });
+
+  test("returning visitor with a session goes straight to the page in ?next=", async ({ page }) => {
+    await page.addInitScript(() => {
+      const now = new Date().toISOString();
+      window.localStorage.setItem("recall-demo", JSON.stringify({ id: "demo-AB12-CD", createdAt: now, lastActiveAt: now }));
+    });
+    await page.goto("/demo?next=%2Flibrary");
+    await expect(page).toHaveURL(/\/library$/);
+  });
+
   test("returning visitor with a session skips straight to Ask", async ({ page }) => {
     await page.addInitScript(() => {
       const now = new Date().toISOString();

@@ -9,6 +9,8 @@ import { isDemoPage } from "@/lib/demo-standby";
  */
 vi.mock("@/lib/supabase/proxy", () => ({
   updateSession: vi.fn(async () => NextResponse.next({ headers: { "x-session-refreshed": "1" } })),
+  // The session gate is off in these tests (mock mode); if it ran, it would see a session.
+  checkSession: vi.fn(async () => ({ response: NextResponse.next(), userId: "user-1" })),
 }));
 
 const { config, proxy, standbyGate } = await import("./proxy");
