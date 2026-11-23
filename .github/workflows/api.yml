@@ -41,6 +41,9 @@ jobs:
           filters: |
             api:
               - 'api/**'
+              # The golden set is test data: test_dyno_golden.py
+              # loads it, so editing it must rerun api-test.
+              - 'dyno/**'
               - '.github/workflows/api.yml'
 
   # Job 2: Ruff. `check` = lint rules, `format --check`
