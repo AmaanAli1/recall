@@ -1,6 +1,6 @@
 /**
- * Sample data for the mocked API. It mirrors the 3 sample courses that every
- * demo session ships with (Algorithms, Operating Systems, Statistics).
+ * Sample data for the mocked API. It mirrors the 2 sample courses that every
+ * demo session ships with (Algorithms, Everyday Math).
  */
 import { SAMPLE_COURSE_IDS } from "../sample-courses";
 import type { Answer, ChatSummary, Course, DynoRun, RunConfig } from "./types";
@@ -20,32 +20,9 @@ export const COURSES: Course[] = [
       { id: "algo-mid", name: "Midterm_Review_Scan.pdf", pages: 12, passages: null, status: "failed", added: "Today", error: "No text layer. Run OCR first." },
     ],
   },
-  {
-    id: SAMPLE_COURSE_IDS.operatingSystems,
-    name: "Operating Systems",
-    color: "teal",
-    sample: true,
-    documents: [
-      { id: "os-8", name: "Lec08_Synchronization.pdf", pages: 40, passages: 147, status: "ready", added: "Oct 6" },
-      { id: "os-7", name: "Lec07_Scheduling.pdf", pages: 36, passages: 131, status: "ready", added: "Oct 1" },
-      { id: "os-26", name: "OSTEP_Ch26_Concurrency.pdf", pages: 18, passages: 66, status: "ready", added: "Sep 29" },
-      { id: "os-6", name: "Lec06_Processes.pdf", pages: 29, passages: 104, status: "ready", added: "Sep 24" },
-    ],
-  },
-  {
-    id: SAMPLE_COURSE_IDS.statistics,
-    name: "Statistics",
-    color: "ochre",
-    sample: true,
-    documents: [
-      { id: "st-5", name: "Ch5_Regression.pdf", pages: 51, passages: null, status: "embedding", progress: 18, added: "Today" },
-      { id: "st-t3", name: "Tutorial3_Solutions.pdf", pages: 9, passages: 33, status: "ready", added: "Oct 4" },
-      { id: "st-4", name: "Ch4_Hypothesis_Testing.pdf", pages: 44, passages: 160, status: "ready", added: "Sep 30" },
-      { id: "st-3", name: "Ch3_Sampling.pdf", pages: 38, passages: 139, status: "ready", added: "Sep 23" },
-      { id: "st-fs", name: "Formula_Sheet.pdf", pages: 2, passages: 7, status: "ready", added: "Sep 10" },
-    ],
-  },
-  { id: "linalg", name: "Linear Algebra", color: "plum", sample: false, documents: [] },
+  // Its PDFs (OpenStax Prealgebra 2e chapters) arrive with the next data load;
+  // until then it has none, so Ask says "not found" and offers no starters.
+  { id: SAMPLE_COURSE_IDS.everydayMath, name: "Everyday Math", color: "green", sample: true, documents: [] },
 ];
 
 export const CHATS: ChatSummary[] = [
@@ -55,11 +32,6 @@ export const CHATS: ChatSummary[] = [
   { id: "dj", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Dijkstra with negative edges", group: "This week" },
   { id: "am", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Amortized cost of dynamic arrays", group: "This week" },
   { id: "bo", courseId: SAMPLE_COURSE_IDS.algorithms, title: "Big-O vs Big-Theta", group: "Earlier" },
-  { id: "os-dl", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Deadlock conditions", group: "Today" },
-  { id: "os-rr", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Round robin time slices", group: "This week" },
-  { id: "os-sem", courseId: SAMPLE_COURSE_IDS.operatingSystems, title: "Semaphores vs mutexes", group: "Earlier" },
-  { id: "st-p", courseId: SAMPLE_COURSE_IDS.statistics, title: "What a p-value means", group: "This week" },
-  { id: "st-clt", courseId: SAMPLE_COURSE_IDS.statistics, title: "Central limit theorem", group: "Earlier" },
 ];
 
 /** Starter questions shown on an empty Ask screen, keyed to canned answers. */
@@ -75,22 +47,10 @@ export const STARTERS: Starter[] = [
   { id: "ms", question: "What’s the recurrence for merge sort, and how do I solve it?" },
 ];
 
-const OS_STARTERS: Starter[] = [
-  { id: "os-dl", question: "What are the four conditions for deadlock?" },
-  { id: "os-rr", question: "How does the time slice affect round robin scheduling?" },
-];
-
-const STATS_STARTERS: Starter[] = [
-  { id: "st-p", question: "What does a p-value actually tell me?" },
-  { id: "st-clt", question: "Why does the central limit theorem matter for sampling?" },
-];
-
 /** Starter questions per course. A course with no documents has none. */
 export const COURSE_STARTERS: Record<string, Starter[]> = {
   [SAMPLE_COURSE_IDS.algorithms]: STARTERS,
-  [SAMPLE_COURSE_IDS.operatingSystems]: OS_STARTERS,
-  [SAMPLE_COURSE_IDS.statistics]: STATS_STARTERS,
-  linalg: [],
+  [SAMPLE_COURSE_IDS.everydayMath]: [],
 };
 
 export const ANSWERS: Record<string, Answer> = {
@@ -152,74 +112,6 @@ export const ANSWERS: Record<string, Answer> = {
     followUps: ["Draw the recursion tree", "Quiz me on this"],
   },
 
-  "os-dl": {
-    question: OS_STARTERS[0].question,
-    courseId: SAMPLE_COURSE_IDS.operatingSystems,
-    claims: [
-      "Deadlock needs four conditions at once: mutual exclusion, hold and wait, no preemption, and circular wait",
-      "Circular wait is the easiest to break in practice: acquire locks in one global order and no cycle can form",
-      "The lecture’s dining philosophers example deadlocks because every philosopher grabs the left fork first",
-    ],
-    sources: [
-      { n: 1, file: "Lec08_Synchronization.pdf", page: 21, score: 0.85, pre: "Coffman conditions: ", hit: "mutual exclusion, hold-and-wait, no preemption, circular wait", post: ". All four must hold…" },
-      { n: 2, file: "OSTEP_Ch26_Concurrency.pdf", page: 9, score: 0.78, pre: "Prevention: ", hit: "provide a total ordering on lock acquisition", post: " so cycles cannot form…" },
-      { n: 3, file: "Lec08_Synchronization.pdf", page: 25, score: 0.72, pre: "Dining philosophers: ", hit: "each philosopher picks up the left fork, then waits forever for the right", post: "…" },
-    ],
-    dropped: [{ file: "Lec06_Processes.pdf", page: 14, score: 0.39 }],
-    timing: { embed: 0.1, search: 0.3, rerank: 0.5, generate: 0.4 },
-    followUps: ["Show me a lock ordering example", "Quiz me on this"],
-  },
-  "os-rr": {
-    question: OS_STARTERS[1].question,
-    courseId: SAMPLE_COURSE_IDS.operatingSystems,
-    claims: [
-      "Round robin gives each ready process one time slice, then moves it to the back of the queue",
-      "A short slice improves response time but spends more of the CPU on context switches",
-      "A very long slice makes round robin behave like first-come, first-served",
-    ],
-    sources: [
-      { n: 1, file: "Lec07_Scheduling.pdf", page: 12, score: 0.83, pre: "RR: ", hit: "each job runs for a time slice, then the scheduler switches to the next job in the queue", post: "…" },
-      { n: 2, file: "Lec07_Scheduling.pdf", page: 14, score: 0.79, pre: "Trade-off: ", hit: "shorter slices improve response time but amortize context-switch cost worse", post: "…" },
-      { n: 3, file: "Lec07_Scheduling.pdf", page: 15, score: 0.7, pre: "As the slice grows, ", hit: "RR degenerates into FIFO", post: "…" },
-    ],
-    dropped: [{ file: "Lec06_Processes.pdf", page: 8, score: 0.42 }],
-    timing: { embed: 0.1, search: 0.2, rerank: 0.5, generate: 0.4 },
-    followUps: ["Compare round robin with SJF", "Quiz me on this"],
-  },
-  "st-p": {
-    question: STATS_STARTERS[0].question,
-    courseId: SAMPLE_COURSE_IDS.statistics,
-    claims: [
-      "A p-value is the probability of seeing data at least this extreme if the null hypothesis were true",
-      "It is not the probability that the null hypothesis is true",
-      "A small p-value (below the chosen α, often 0.05) is evidence against the null, not proof of the alternative",
-    ],
-    sources: [
-      { n: 1, file: "Ch4_Hypothesis_Testing.pdf", page: 7, score: 0.86, pre: "Definition: ", hit: "the probability, assuming H₀ is true, of a test statistic at least as extreme as the one observed", post: "…" },
-      { n: 2, file: "Ch4_Hypothesis_Testing.pdf", page: 9, score: 0.8, pre: "Common mistake: ", hit: "the p-value is not P(H₀ is true)", post: "…" },
-      { n: 3, file: "Tutorial3_Solutions.pdf", page: 2, score: 0.71, pre: "Since p = 0.03 < α = 0.05, ", hit: "we reject H₀ at the 5% level", post: "…" },
-    ],
-    dropped: [{ file: "Formula_Sheet.pdf", page: 1, score: 0.44 }],
-    timing: { embed: 0.1, search: 0.3, rerank: 0.5, generate: 0.4 },
-    followUps: ["Walk me through Tutorial 3, question 2", "Quiz me on this"],
-  },
-  "st-clt": {
-    question: STATS_STARTERS[1].question,
-    courseId: SAMPLE_COURSE_IDS.statistics,
-    claims: [
-      "The central limit theorem says the mean of a large random sample is approximately normally distributed, whatever the population’s shape",
-      "That is why we can build confidence intervals for a mean with the normal distribution",
-      "The usual rule of thumb in the course is a sample size of at least 30",
-    ],
-    sources: [
-      { n: 1, file: "Ch3_Sampling.pdf", page: 18, score: 0.87, pre: "CLT: ", hit: "the sampling distribution of x̄ is approximately normal for large n", post: ", regardless of the population distribution…" },
-      { n: 2, file: "Ch3_Sampling.pdf", page: 22, score: 0.78, pre: "Consequence: ", hit: "x̄ ± z·σ/√n gives an approximate confidence interval", post: "…" },
-      { n: 3, file: "Formula_Sheet.pdf", page: 1, score: 0.7, pre: "Rule of thumb: ", hit: "n ≥ 30", post: " for the normal approximation…" },
-    ],
-    dropped: [{ file: "Ch4_Hypothesis_Testing.pdf", page: 3, score: 0.4 }],
-    timing: { embed: 0.1, search: 0.2, rerank: 0.5, generate: 0.4 },
-    followUps: ["Show the confidence interval formula", "Quiz me on this"],
-  },
 };
 
 /**

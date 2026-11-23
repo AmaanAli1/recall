@@ -6,8 +6,20 @@
  */
 import type { CourseColor } from "./api/types";
 
-/** Most courses a demo session can hold. Archived courses count: they still hold PDFs. */
-export const COURSE_LIMIT = 10;
+/**
+ * Most courses a visitor can create in one demo session. Sample courses don't
+ * count; archived ones do (they still hold PDFs). Kept at 1 on purpose: every
+ * upload costs embeddings and storage, and the demo is free and anonymous
+ * (decided 2026-11-23; raise it if the demo ever grows). The database trigger
+ * enforce_course_limit() holds the same number and raises COURSE_LIMIT_MESSAGE.
+ */
+export const COURSE_LIMIT = 1;
+
+/** Exactly what the database raises at the limit (and the API shows visitors). */
+export const COURSE_LIMIT_MESSAGE = "A demo can hold 1 course of your own.";
+
+/** The visitor's own courses: the ones that count towards the limit. */
+export const ownCourseCount = (courses: readonly { sample: boolean }[]) => courses.filter((c) => !c.sample).length;
 export const NAME_MAX = 60;
 export const CODE_MAX = 12;
 /** Most PDFs the dialog takes in one go. */

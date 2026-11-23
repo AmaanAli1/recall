@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Course, CourseColor, CourseInput } from "@/lib/api";
-import { CODE_MAX, COURSE_COLORS, COURSE_LIMIT, FILES_PER_BATCH, NAME_MAX, TERMS, cleanCode, cleanName, courseNameError } from "@/lib/courses";
+import { CODE_MAX, COURSE_COLORS, COURSE_LIMIT, FILES_PER_BATCH, NAME_MAX, TERMS, cleanCode, cleanName, courseNameError, ownCourseCount } from "@/lib/courses";
 import { isPdf } from "@/lib/files";
 import s from "../library.module.css";
 
@@ -34,7 +34,8 @@ export function CourseDialog({
   onClosed: () => void;
 }) {
   const editing = mode.kind === "edit" ? mode.course : null;
-  const atLimit = !editing && courses.length >= COURSE_LIMIT;
+  // Only the visitor's own courses count; the sample courses come with every demo.
+  const atLimit = !editing && ownCourseCount(courses) >= COURSE_LIMIT;
   const ids = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const downOnBackdrop = useRef(false);
@@ -150,7 +151,6 @@ export function CourseDialog({
   };
 
   const heading = atLimit ? "Course limit reached" : editing ? "Edit course" : "New course";
-  const total = courses.length + (editing ? 0 : 1);
 
   return (
     <dialog
@@ -185,7 +185,9 @@ export function CourseDialog({
         {atLimit ? (
           <>
             <p id={`${ids}-d`} className="mt-2 text-[15px] leading-relaxed text-ink-2">
-              You have {COURSE_LIMIT} courses, the most a demo can hold. Delete a course you don’t need to make room for a new one.
+              {COURSE_LIMIT === 1
+                ? "You already have a course of your own. The demo keeps it to one to keep costs down, so delete it first to make room for a new one."
+                : `You have ${COURSE_LIMIT} courses of your own, the most a demo can hold. Delete one you don’t need to make room for a new one.`}
             </p>
             <div className="mt-5 flex justify-end">
               <button type="button" data-autofocus="" className="btn btn-ghost min-h-11 rounded-[5px] bg-paper! px-4 py-[9px] text-sm" onClick={finish}>
@@ -378,7 +380,7 @@ export function CourseDialog({
               <div aria-live="assertive">{serverError && <p className="m-0 text-sm font-medium text-bad">{serverError}</p>}</div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3.5">
-                <span className="num text-[13px] text-ink-2">{editing ? "" : `${total} of ${COURSE_LIMIT} courses`}</span>
+                <span className="num text-[13px] text-ink-2">{editing ? "" : `Demo limit: ${COURSE_LIMIT} ${COURSE_LIMIT === 1 ? "course" : "courses"} of your own`}</span>
                 <span className="flex gap-2">
                   <button type="button" className="btn btn-ghost min-h-11 rounded-[5px] bg-paper! px-4 py-[9px] text-sm" onClick={tryClose}>
                     Cancel

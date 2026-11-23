@@ -138,27 +138,19 @@ test.describe("ask", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("switching course stays on Ask and shows that course's starters and chats", async ({ page }) => {
+  test("switching course stays on Ask; a course with no documents points to Library and disables asking", async ({ page }) => {
     await page.goto("/ask");
     const courses = page.getByRole("complementary", { name: "Courses and chats" });
-    await courses.getByRole("button", { name: /Operating Systems/ }).click();
+    // Exactly the two sample courses (Operating Systems and Statistics were removed).
+    await expect(courses.getByRole("button", { name: /Operating Systems|Statistics|Linear Algebra/ })).toHaveCount(0);
+    await courses.getByRole("button", { name: /Everyday Math/ }).click();
 
     await expect(page).toHaveURL(/\/ask$/);
-    await expect(courses.getByRole("button", { name: /Operating Systems/ })).toHaveAttribute("aria-current", "true");
-    await expect(page.getByRole("heading", { level: 1, name: "Ask anything about Operating Systems." })).toBeVisible();
-    await expect(courses.getByRole("link", { name: "Deadlock conditions" })).toBeVisible();
+    await expect(courses.getByRole("button", { name: /Everyday Math/ })).toHaveAttribute("aria-current", "true");
+    // Its PDFs aren't loaded yet, so there's nothing to ask.
+    await expect(page.getByRole("heading", { level: 1, name: "Everyday Math has no documents yet." })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Ask about Everyday Math" })).toBeDisabled();
     await expect(courses.getByRole("link", { name: "DP vs greedy" })).toHaveCount(0);
-
-    await page.getByRole("button", { name: "What are the four conditions for deadlock?" }).click();
-    await expect(sources(page).getByText("Lec08_Synchronization.pdf").first()).toBeVisible();
-  });
-
-  test("a course with no documents points to Library and disables asking", async ({ page }) => {
-    await page.goto("/ask");
-    const courses = page.getByRole("complementary", { name: "Courses and chats" });
-    await courses.getByRole("button", { name: /Linear Algebra/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Linear Algebra has no documents yet." })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Ask about Linear Algebra" })).toBeDisabled();
   });
 
   test("a chat can be renamed inline", async ({ page }) => {
@@ -225,8 +217,8 @@ test.describe("ask", () => {
     await expect(gear).toBeFocused();
   });
 
-  test("/ask?course=os opens on that course", async ({ page }) => {
-    await page.goto("/ask?course=00000000-0000-0000-0000-00000000c002");
-    await expect(page.getByRole("heading", { level: 1, name: "Ask anything about Operating Systems." })).toBeVisible();
+  test("/ask?course=<id> opens on that course", async ({ page }) => {
+    await page.goto("/ask?course=00000000-0000-0000-0000-00000000c004");
+    await expect(page.getByRole("heading", { level: 1, name: "Everyday Math has no documents yet." })).toBeVisible();
   });
 });

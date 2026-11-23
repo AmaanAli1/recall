@@ -4,7 +4,7 @@ import { toCourse } from "@/lib/supabase/mappers";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * GET /api/courses: the visitor's courses plus the 3 shared sample courses.
+ * GET /api/courses: the visitor’s courses plus the 2 shared sample courses.
  *
  * No WHERE clause for "mine or samples": the RLS policy "read own and sample
  * courses" already filters every row, inside the database.

@@ -18,19 +18,17 @@ test.describe("library", () => {
     const algo = page.getByRole("tab", { name: /Algorithms/ });
     await expect(algo).toHaveAttribute("aria-selected", "true");
     await expect(algo).toContainText("[6]");
-    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toContainText("[4]");
-
-    await page.getByRole("tab", { name: /Operating Systems/ }).click();
-    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toContainText("Lec08_Synchronization.pdf");
+    // Exactly the two sample courses.
+    await expect(page.getByRole("tab")).toHaveCount(2);
+    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toContainText("[0]");
 
     // Arrow keys move between tabs.
+    await algo.focus();
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("tab", { name: /Statistics/ })).toBeFocused();
-    await expect(page.getByRole("tab", { name: /Statistics/ })).toHaveAttribute("aria-selected", "true");
-
-    await page.getByRole("tab", { name: /Linear Algebra/ }).click();
-    await expect(page.getByRole("heading", { name: "Nothing in Linear Algebra yet." })).toBeVisible();
+    const math = page.getByRole("tab", { name: /Everyday Math/ });
+    await expect(math).toBeFocused();
+    await expect(math).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "Nothing in Everyday Math yet." })).toBeVisible();
   });
 
   test("a .pptx shows the PDFs-only slip, and Got it dismisses it", async ({ page }) => {
@@ -67,25 +65,35 @@ test.describe("library", () => {
     await expect(page.getByRole("row", { name: /Week7_Graphs\.pdf/ })).toBeVisible();
   });
 
-  test("row menu opens and Escape closes it", async ({ page }) => {
+  test("row menu offers only what works on a sample document, and Escape closes it", async ({ page }) => {
     await openLibrary(page);
     const more = page.getByRole("button", { name: "More actions for Week6_DynamicProgramming.pdf" });
     await more.click();
     await expect(more).toHaveAttribute("aria-expanded", "true");
     const menu = page.getByRole("menu", { name: "More actions for Week6_DynamicProgramming.pdf" });
-    await expect(menu.getByRole("menuitem", { name: "Ask about this document" })).toBeVisible();
+    // Shared sample documents: ask about the course, nothing that edits them.
+    await expect(menu.getByRole("menuitem")).toHaveText(["Ask about this course"]);
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(more).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("delete asks to confirm, and Undo restores the row", async ({ page }) => {
+  test("in your own course, delete asks to confirm, and Undo restores the row", async ({ page }) => {
     await openLibrary(page);
-    const name = "Week5_GreedyAlgorithms.pdf";
+    // Only your own documents can be deleted, so make a course with one first.
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await dialog.getByRole("textbox", { name: "Course name" }).fill("My notes");
+    await dialog.getByLabel("Lecture PDFs").setInputFiles([PDF]);
+    await dialog.getByRole("button", { name: "Create and add 1 PDF" }).click();
+    const name = "Week7_Graphs.pdf";
+    await expect(page.getByRole("row", { name: new RegExp(name) })).toContainText("Ready", { timeout: 15_000 });
+
     await page.getByRole("button", { name: `More actions for ${name}` }).click();
     const menu = page.getByRole("menu", { name: `More actions for ${name}` });
+    await expect(menu.getByRole("menuitem")).toHaveText(["Ask about this course", "Delete"]);
     await menu.getByRole("menuitem", { name: "Delete" }).click();
-    await expect(menu).toContainText("Recall forgets its 101 passages too.");
+    await expect(menu).toContainText("passages too.");
     await menu.getByRole("button", { name: "Delete" }).click();
 
     await expect(page.getByRole("row", { name: new RegExp(name) })).toHaveCount(0);
@@ -129,6 +137,19 @@ test.describe("library", () => {
     const tab = page.getByRole("tab", { name: /CP213 · Data Structures/ });
     await expect(tab).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Nothing in Data Structures yet." })).toBeVisible();
+
+    // One course of your own is the demo's limit (the sample courses don't count).
+    await page.getByRole("button", { name: "New course" }).click();
+    const full = page.getByRole("dialog", { name: "Course limit reached" });
+    await expect(full).toContainText("You already have a course of your own.");
+    await full.getByRole("button", { name: "Got it" }).click();
+    await expect(full).toBeHidden();
+  });
+
+  test("New course says the demo limit, counting only your own courses", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("button", { name: "New course" }).click();
+    await expect(page.getByRole("dialog", { name: "New course" })).toContainText("Demo limit: 1 course of your own");
   });
 
   test("New course: Escape after typing asks before discarding", async ({ page }) => {
@@ -163,29 +184,29 @@ test.describe("library", () => {
 
   test("archive hides a course behind the Archived toggle, and Unarchive brings it back", async ({ page }) => {
     await openLibrary(page);
-    await page.getByRole("tab", { name: /Statistics/ }).click();
-    await page.getByRole("button", { name: "Options for Statistics" }).click();
+    await page.getByRole("tab", { name: /Everyday Math/ }).click();
+    await page.getByRole("button", { name: "Options for Everyday Math" }).click();
     await page.getByRole("menuitem", { name: /^Archive/ }).click();
-    await expect(page.getByRole("tab", { name: /Statistics/ })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveCount(0);
 
     const toggle = page.getByRole("button", { name: /^Archived/ });
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("tab", { name: /Statistics/ }).click();
+    await page.getByRole("tab", { name: /Everyday Math/ }).click();
     await page.getByRole("button", { name: "Unarchive" }).click();
     await expect(page.getByRole("button", { name: /^Archived/ })).toHaveCount(0);
   });
 
   test("deleting a course asks first, and Undo restores it", async ({ page }) => {
     await openLibrary(page);
-    await page.getByRole("tab", { name: /Operating Systems/ }).click();
-    await page.getByRole("button", { name: "Options for Operating Systems" }).click();
+    await page.getByRole("tab", { name: /Everyday Math/ }).click();
+    await page.getByRole("button", { name: "Options for Everyday Math" }).click();
     await page.getByRole("menuitem", { name: /^Delete course/ }).click();
-    await page.getByRole("menu", { name: "Options for Operating Systems" }).getByRole("button", { name: "Delete" }).click();
-    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveCount(0);
-    await expect(page.getByText("Operating Systems deleted, with its PDFs and chats.")).toBeVisible();
+    await page.getByRole("menu", { name: "Options for Everyday Math" }).getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveCount(0);
+    await expect(page.getByText("Everyday Math deleted, with its PDFs and chats.")).toBeVisible();
     await page.getByRole("button", { name: "Undo" }).click();
-    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveAttribute("aria-selected", "true");
   });
 
   test("Run OCR reads the scan, then the document becomes Ready", async ({ page }) => {
@@ -208,8 +229,8 @@ test.describe("library", () => {
     expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
   });
 
-  test("/library?course=os opens on that course", async ({ page }) => {
-    await page.goto("/library?course=00000000-0000-0000-0000-00000000c002");
-    await expect(page.getByRole("tab", { name: /Operating Systems/ })).toHaveAttribute("aria-selected", "true");
+  test("/library?course=<id> opens on that course", async ({ page }) => {
+    await page.goto("/library?course=00000000-0000-0000-0000-00000000c004");
+    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveAttribute("aria-selected", "true");
   });
 });

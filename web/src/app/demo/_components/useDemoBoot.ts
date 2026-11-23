@@ -8,7 +8,7 @@ export type StepStatus = "idle" | "busy" | "done" | "failed";
 
 export const STEP_LABELS = [
   "Creating your private session",
-  "Opening 3 sample courses",
+  "Opening the sample courses",
   "Warming up search and the reranker",
 ] as const;
 

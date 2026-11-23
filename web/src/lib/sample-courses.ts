@@ -1,5 +1,6 @@
 /**
- * Fixed ids of the 3 shared sample courses.
+ * Fixed ids of the 2 shared sample courses (Operating Systems c002 and
+ * Statistics c003 were removed in the 2026-11-23 clean-up).
  *
  * These are the same values the database migration seeds
  * (supabase/migrations/…_sample_courses_and_end_session.sql). The mock uses
@@ -8,6 +9,5 @@
  */
 export const SAMPLE_COURSE_IDS = {
   algorithms: "00000000-0000-0000-0000-00000000c001",
-  operatingSystems: "00000000-0000-0000-0000-00000000c002",
-  statistics: "00000000-0000-0000-0000-00000000c003",
+  everydayMath: "00000000-0000-0000-0000-00000000c004",
 } as const;

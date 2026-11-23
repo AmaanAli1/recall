@@ -7,7 +7,7 @@ test.describe("demo boot", () => {
     const steps = page.getByRole("listitem");
     for (const label of [
       "Creating your private session",
-      "Opening 3 sample courses",
+      "Opening the sample courses",
       "Warming up search and the reranker",
     ]) {
       await expect(steps.filter({ hasText: label })).toContainText("done");
@@ -15,7 +15,7 @@ test.describe("demo boot", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Your demo notebook is ready." })).toBeVisible();
     await expect(page.getByText(/demo-[A-Z0-9]{4}-[A-Z0-9]{2}/)).toBeVisible();
-    await expect(page.getByText("3 sample courses · 15 lecture PDFs")).toBeVisible();
+    await expect(page.getByText("2 sample courses · 6 lecture PDFs")).toBeVisible();
 
     // A full page load, not an in-app jump: with real sessions, an in-app jump would
     // re-use the session gate's cached redirect and land back on /demo (PR #45).

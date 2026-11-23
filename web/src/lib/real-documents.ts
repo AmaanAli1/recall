@@ -11,13 +11,16 @@
 import type { CourseDocument } from "./api/types";
 import { SAMPLE_COURSE_IDS } from "./sample-courses";
 
+/** Where Erickson publishes the chapters (the same URLs as api/samples.toml). */
+const BOOK = "https://jeffe.cs.illinois.edu/teaching/algorithms/book";
+
 /** Chunk counts per chapter, as loaded (90 + 115 + 55 + 67 = 327 passages). */
 export const REAL_DOCUMENTS: Record<string, CourseDocument[]> = {
   [SAMPLE_COURSE_IDS.algorithms]: [
-    { id: "erickson-1", name: "Erickson_Ch1_Recursion.pdf", pages: 50, passages: 90, status: "ready", added: "Nov 7" },
-    { id: "erickson-3", name: "Erickson_Ch3_DynamicProgramming.pdf", pages: 62, passages: 115, status: "ready", added: "Nov 7" },
-    { id: "erickson-4", name: "Erickson_Ch4_GreedyAlgorithms.pdf", pages: 28, passages: 55, status: "ready", added: "Nov 7" },
-    { id: "erickson-8", name: "Erickson_Ch8_ShortestPaths.pdf", pages: 36, passages: 67, status: "ready", added: "Nov 7" },
+    { id: "erickson-1", name: "Erickson_Ch1_Recursion.pdf", pages: 50, passages: 90, status: "ready", added: "Nov 7", sourceUrl: `${BOOK}/01-recursion.pdf` },
+    { id: "erickson-3", name: "Erickson_Ch3_DynamicProgramming.pdf", pages: 62, passages: 115, status: "ready", added: "Nov 7", sourceUrl: `${BOOK}/03-dynprog.pdf` },
+    { id: "erickson-4", name: "Erickson_Ch4_GreedyAlgorithms.pdf", pages: 28, passages: 55, status: "ready", added: "Nov 7", sourceUrl: `${BOOK}/04-greedy.pdf` },
+    { id: "erickson-8", name: "Erickson_Ch8_ShortestPaths.pdf", pages: 36, passages: 67, status: "ready", added: "Nov 7", sourceUrl: `${BOOK}/08-sssp.pdf` },
   ],
 };
 

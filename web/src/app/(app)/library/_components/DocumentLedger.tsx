@@ -26,6 +26,8 @@ interface Props {
   onRunOcr: (doc: CourseDocument) => void;
   /** For "Ask" links, so Ask opens on this course. */
   courseId: string;
+  /** False for a sample course: its documents are shared, so they can't be deleted. */
+  canDelete: boolean;
 }
 
 /**
@@ -50,7 +52,7 @@ export function UndoBar({ undo, onUndo }: { undo: UndoState | null; onUndo: () =
 }
 
 /** Stats line, Undo bar and the ruled ledger of documents. */
-export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, onNavigate, onRunOcr, courseId }: Props) {
+export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, onNavigate, onRunOcr, courseId, canDelete }: Props) {
   const ready = docs.filter((d) => d.status === "ready");
   const busy = docs.filter((d) => d.status === "embedding").length;
   const failed = docs.filter((d) => d.status === "failed").length;
@@ -96,6 +98,7 @@ export function DocumentLedger({ docs, menu, undo, setMenu, onDelete, onUndo, on
                   onNavigate={onNavigate}
                   onRunOcr={() => onRunOcr(d)}
                   askHref={`/ask?course=${encodeURIComponent(courseId)}`}
+                  canDelete={canDelete}
                 />
               );
             })}
