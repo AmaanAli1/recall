@@ -6,6 +6,7 @@ import { COURSE_STARTERS } from "@/lib/api/mock-data";
 import { askErrorText } from "@/lib/ask-errors";
 import { consumeFreshArrival } from "@/lib/demo-flags";
 import { hasRealDocuments } from "@/lib/real-documents";
+import { REAL_RUNS, formatRunDate } from "@/lib/dyno-results";
 import { redline } from "@/lib/stats";
 import { latestAnswered, messagesToTurns, turnKey, type Turn } from "@/lib/thread";
 import { AnswerSheet, type View } from "./AnswerSheet";
@@ -19,10 +20,26 @@ import s from "../ask.module.css";
 /** The course Ask opens on. Dyno's golden set is also Algorithms. */
 const DEFAULT_COURSE: string = SAMPLE_COURSE_IDS.algorithms;
 
+/** The glance card's Dyno half: the latest run's recall@5, its gate, and its id/date. */
+export function dynoGlance(sample: DynoRun[], isGoldenCourse: boolean): Omit<Glance, "passages"> {
+  const none = { recall: null, gate: "baseline" as const, run: null };
+  if (!isGoldenCourse) return none;
+  const latest = sample.at(-1);
+  if (latest) {
+    const clear = latest.metrics.recall >= redline(sample[0].metrics.recall);
+    return { recall: latest.metrics.recall, gate: sample.length === 1 ? "baseline" : clear ? "clear" : "below", run: { id: latest.id, date: latest.date } };
+  }
+  const real = REAL_RUNS.at(-1);
+  if (!real) return none;
+  // v0 has no redline gate yet, so later runs read as "clear" only once v1 adds one.
+  return { recall: real.metrics.recall5.value, gate: REAL_RUNS.length === 1 ? "baseline" : "clear", run: { id: real.id, date: formatRunDate(real.date, false) } };
+}
+
 export interface Glance {
   passages: number;
   recall: number | null;
-  clear: boolean;
+  /** How the latest run compares: the first run is the baseline itself. */
+  gate: "baseline" | "clear" | "below";
   /** The latest Dyno run, for the "Open Dyno →" line. */
   run: { id: string; date: string } | null;
 }
@@ -324,15 +341,8 @@ export function AskWorkspace() {
   const docCount = course ? course.documents.length : null;
   const starters = COURSE_STARTERS[courseId] ?? [];
   // Dyno evaluates the Algorithms golden set only, so recall@5 shows for that course.
-  const latest = runs.at(-1);
-  const glance: Glance | null = course
-    ? {
-        passages: course.documents.reduce((n, d) => n + (d.passages ?? 0), 0),
-        recall: courseId === DEFAULT_COURSE && latest ? latest.metrics.recall : null,
-        clear: !!latest && !!runs[0] && latest.metrics.recall >= redline(runs[0].metrics.recall),
-        run: courseId === DEFAULT_COURSE && latest ? { id: latest.id, date: latest.date } : null,
-      }
-    : null;
+  // The sample runs (a test fixture) win if present; otherwise the real committed runs.
+  const glance: Glance | null = course ? { passages: course.documents.reduce((n, d) => n + (d.passages ?? 0), 0), ...dynoGlance(runs, courseId === DEFAULT_COURSE) } : null;
   // The open saved chat is "current". Before anything is saved, the answer Ask
   // shows on its own matches a sample chat (starters share ids with them).
   const sample = turns[0]?.sample ? turns[0] : null;

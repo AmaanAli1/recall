@@ -13,19 +13,24 @@ async function withSampleRuns(page: Page) {
   });
 }
 
-test.describe("dyno before launch (no runs)", () => {
-  test("shows the empty state with no numbers @mobile", async ({ page }) => {
+test.describe("dyno with the real runs (no sample runs)", () => {
+  test("shows run 1: recall 20/20, MRR with its interval, nothing invented @mobile", async ({ page }) => {
     await page.goto("/dyno");
-    await expect(page.getByRole("heading", { level: 1, name: "Waiting on the first run." })).toBeVisible();
-    const metrics = page.getByRole("region", { name: "Metrics Dyno will track" });
-    await expect(metrics.getByRole("heading", { level: 2 })).toHaveText(["Recall@5", "MRR", "Faithfulness", "Answer relevancy"]);
-    await expect(metrics.getByText("No score yet")).toHaveCount(4);
-    const table = runsTable(page);
-    await expect(table.getByRole("columnheader", { name: "Details" })).toBeVisible();
-    await expect(table.getByText("No runs yet.")).toBeVisible();
-    // Nothing from the sample data leaks through.
+    await expect(page.getByRole("heading", { level: 1, name: "Run 1: the baseline." })).toBeVisible();
+    const scores = page.getByRole("region", { name: "Latest run's scores" });
+    await expect(scores.getByRole("heading", { level: 2 })).toHaveText(["Recall@5", "MRR", "Faithfulness", "Answer relevancy"]);
+    await expect(scores.getByText("20 of 20 questions")).toHaveCount(1);
+    await expect(scores.getByText("95% interval 0.63–0.89")).toBeVisible();
+    await expect(scores.getByText("Not measured yet")).toHaveCount(2);
+    // Real runs only: no Run Dyno button, and none of the sample run ids.
     await expect(page.getByRole("button", { name: "Run Dyno" })).toHaveCount(0);
     await expect(page.getByText(/\bR1[0-3]\b|\bR[89]\b/)).toHaveCount(0);
+    const table = runsTable(page);
+    await expect(table.getByRole("rowheader", { name: /R1/ })).toBeVisible();
+    await table.getByRole("button", { name: "Show details for run 1" }).click();
+    await expect(table.getByRole("link", { name: /^[0-9a-f]{7}$/ })).toHaveAttribute("href", /github\.com\/AmaanAli1\/recall\/commit\//);
+    // Every golden question has a rank row.
+    await expect(page.getByRole("group", { name: "Question ranks table" }).getByRole("rowheader")).toHaveCount(20);
   });
 });
 

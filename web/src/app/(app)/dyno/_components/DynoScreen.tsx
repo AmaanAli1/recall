@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { listDynoRuns, startDynoRun, type DynoRun } from "@/lib/api";
+import { REAL_RUNS } from "@/lib/dyno-results";
 import { cx, estimateOf, gateOf, liveN, nextRunId, runNum, upsertRun, type ChartMetric, type LiveView, type Role, type RunState } from "../_lib/model";
 import s from "../dyno.module.css";
 import { Collapse } from "./Collapse";
 import { DynoEmpty } from "./DynoEmpty";
+import { DynoResults } from "./DynoResults";
 import { ComparePanel } from "./ComparePanel";
 import { DynoHeader } from "./DynoHeader";
 import { Gauges } from "./Gauges";
@@ -111,11 +113,12 @@ export function DynoScreen() {
     );
   }
 
-  // Launch state: no real runs logged yet, so no numbers to show.
+  // No sample runs (the normal case; tests opt into those): show the real runs the
+  // Dyno script committed (v0: retrieval only), or the empty state if there are none.
   if (runs.length === 0) {
     return (
       <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14">
-        <DynoEmpty />
+        {REAL_RUNS.length > 0 ? <DynoResults runs={REAL_RUNS} /> : <DynoEmpty />}
       </main>
     );
   }

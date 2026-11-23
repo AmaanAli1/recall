@@ -211,8 +211,9 @@ test.describe("ask", () => {
     await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(6);
     await expect(page).toHaveURL(/\/ask$/);
     await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
-    // No real Dyno runs before launch, so the glance card says so instead of showing a number.
-    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("not run yet");
+    // The glance card shows the real Dyno run 1 (the committed baseline).
+    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("run 1 · Nov 22");
+    await expect(side.getByText("recall@5 · baseline")).toBeVisible();
   });
 
   test("the Settings × closes the popover", async ({ page }) => {
