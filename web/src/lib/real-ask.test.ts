@@ -9,7 +9,7 @@ import { askErrorText, SESSION_ENDED } from "./ask-errors";
 import { SAMPLE_COURSE_IDS } from "./sample-courses";
 
 const ALGO = SAMPLE_COURSE_IDS.algorithms;
-const OS = SAMPLE_COURSE_IDS.operatingSystems;
+const MATH = SAMPLE_COURSE_IDS.everydayMath;
 
 /** A fresh copy of the API client with these flags. */
 async function client(flags: { sessions?: boolean; chats?: boolean; ask?: boolean }) {
@@ -87,14 +87,14 @@ describe("askAndSave", () => {
 describe("listCourses with real answers", () => {
   const realCourses = [
     { id: ALGO, name: "Algorithms", color: "blue", sample: true, documents: [] },
-    { id: OS, name: "Operating Systems", color: "green", sample: true, documents: [] },
+    { id: MATH, name: "Everyday Math", color: "green", sample: true, documents: [] },
   ];
 
   it("lists the four real Erickson chapters for Algorithms, and leaves other courses alone", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, realCourses)));
     const { listCourses } = await client({ sessions: true, chats: true, ask: true });
 
-    const [algo, os] = await listCourses();
+    const [algo, math] = await listCourses();
 
     expect(algo.documents.map((d) => d.name)).toEqual([
       "Erickson_Ch1_Recursion.pdf",
@@ -104,7 +104,9 @@ describe("listCourses with real answers", () => {
     ]);
     // The chunk counts the ingest loaded (build log, PR #33).
     expect(algo.documents.reduce((n, d) => n + (d.passages ?? 0), 0)).toBe(327);
-    expect(os.documents.map((d) => d.name)).toContain("Lec08_Synchronization.pdf"); // still the mock's
+    // Each chapter links to the author's own PDF ("Open the original PDF").
+    expect(algo.documents.every((d) => d.sourceUrl?.startsWith("https://jeffe.cs.illinois.edu/teaching/algorithms/book/"))).toBe(true);
+    expect(math.documents).toEqual([]); // no real PDFs yet: still the mock's (empty) list
   });
 
   it("keeps a real chapter hidden after it's deleted in this tab", async () => {

@@ -8,7 +8,7 @@ create extension if not exists pgtap with schema extensions;
 
 -- How many tests we promise to run. If one silently 
 -- doesn't run, pgTAP fails the file. 
-select plan(15);
+select plan(13);
 
 -- Two fake visitors. Inserting into auth.users fires 
 -- our trigger, exactly like a real anonymous sign-in. 
@@ -41,20 +41,10 @@ select is(
     (select count(*)::int from public.demo_sessions), 
     1, 'a visitor sees only their own session');
 
-select lives_ok($$
-    insert into public.courses (session_id, name, color)
-    values ('00000000-0000-0000-0000-00000000000a', 
-            'Data Structures', 'rust')
-$$, 'a visitor can create a course');
-
--- 23505 = unique_violation, 23514 = check_violation
-select throws_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000a', 
-            'data structures')
-$$, '23505', null, 
-    'course names are unique per session, ignoring case');
-
+-- 23514 = check_violation. Tested BEFORE the visitor's
+-- first course: after it, the one-course limit would
+-- reject any insert first, and this would pass for the
+-- wrong reason.
 select throws_ok($$
     insert into public.courses (session_id, name, color)
     values ('00000000-0000-0000-0000-00000000000a', 
@@ -62,18 +52,19 @@ select throws_ok($$
 $$, '23514', null, 'unknown colours are rejected');
 
 select lives_ok($$
-    insert into public.courses (session_id, name)
-    select '00000000-0000-0000-0000-00000000000a', 
-            'Course ' || g
-    from generate_series(2, 10) as g
-$$, 'up to 10 courses is fine');
+    insert into public.courses (session_id, name, color)
+    values ('00000000-0000-0000-0000-00000000000a', 
+            'Data Structures', 'rust')
+$$, 'a visitor can create a course');
 
+-- One course of your own (2026-11-23). The exact message
+-- matters: the API shows it to the visitor.
 select throws_ok($$
     insert into public.courses (session_id, name)
     values ('00000000-0000-0000-0000-00000000000a', 
-            'Course 11')
-$$, '23514', 'A demo can hold 10 courses.', 
-    'the 11th course is blocked');
+            'Course 2')
+$$, '23514', 'A demo can hold 1 course of your own.', 
+    'a second course of your own is blocked');
 
 select lives_ok($$ select public.touch_session() $$, 
     'a visitor can mark their session active');

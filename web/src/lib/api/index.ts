@@ -41,7 +41,7 @@ export const REAL_ASK = REAL_CHATS && process.env.NEXT_PUBLIC_REAL_ASK === "true
 
 /** Creating and editing your own courses arrives with Phase 5 (December). */
 const COURSES_READ_ONLY =
-  "Adding and editing your own courses is coming soon. The 3 sample courses are ready to use.";
+  "Adding and editing your own courses is coming soon. The sample courses are ready to use.";
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
 
 export class ApiError extends Error {

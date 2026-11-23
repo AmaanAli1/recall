@@ -33,6 +33,8 @@ export interface CourseDocument {
   added: string;
   /** Why it failed, when status is "failed". */
   error?: string;
+  /** Where the original PDF lives online (sample documents), for "Open the original PDF". */
+  sourceUrl?: string;
 }
 
 /** Muted course colours, so they never compete with the red accent. */

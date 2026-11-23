@@ -145,7 +145,7 @@ function TurnBlock(
 
 /** Shown wherever a course's answers can't be real yet. */
 const SAMPLE_ONLY_TEXT =
-  "This course’s PDFs are placeholders for now. Only Algorithms has real documents in this demo, so questions here come back as not found.";
+  "This course’s PDFs aren’t loaded yet. Only Algorithms has real documents in this demo for now, so questions here come back as not found.";
 
 function SampleOnlyNote() {
   return <p className="m-0 mt-3 max-w-[40em] text-sm leading-7 text-ink-3">{SAMPLE_ONLY_TEXT}</p>;

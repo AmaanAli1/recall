@@ -108,7 +108,7 @@ $$, 'A can rename her chat');
 -- before RLS is even consulted.
 select throws_ok($$
   update public.chats
-     set course_id = '00000000-0000-0000-0000-00000000c002'
+     set course_id = '00000000-0000-0000-0000-00000000c004'
    where id = '00000000-0000-0000-0000-00000000c4a1'
 $$, '42501', null,
   'A cannot move a chat to another course');

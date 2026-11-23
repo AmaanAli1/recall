@@ -10,12 +10,7 @@ import s from "../library.module.css";
 const ICON = {
   open: "M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
   ask: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
-  rename: "M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
-  reembed: "M20 11a8 8 0 0 0-14.5-4.5L4 8 M4 4v4h4 M4 13a8 8 0 0 0 14.5 4.5L20 16 M20 20v-4h-4",
-  move: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M12 11v5 M9.5 13.5L12 16l2.5-2.5",
-  download: "M12 4v11 M7 10l5 5 5-5 M5 20h14",
   ocr: "M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M8 10h8 M8 14h5",
-  cancel: "M6 6l12 12 M18 6L6 18",
   delete: "M4 7h16 M10 11v6 M14 11v6 M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12 M9 7V4h6v3",
 } as const;
 
@@ -43,10 +38,12 @@ export interface DocumentRowProps {
   /** Read a scanned PDF into text (OCR), then embed it. */
   onRunOcr: () => void;
   askHref: string;
+  /** False for the shared sample documents: nobody may delete those. */
+  canDelete: boolean;
 }
 
 /** One ledger line: margin number, dog-eared icon, status, and the actions menu. */
-export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onCloseMenu, onConfirmDelete, onCancelDelete, onDelete, onNavigate, onRunOcr, askHref }: DocumentRowProps) {
+export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onCloseMenu, onConfirmDelete, onCancelDelete, onDelete, onNavigate, onRunOcr, askHref, canDelete }: DocumentRowProps) {
   const ready = doc.status === "ready";
   const busy = doc.status === "embedding";
   const failed = doc.status === "failed";
@@ -58,17 +55,26 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
   // so the menu renders in a portal and is placed next to its button (flips up if needed).
   const pos = useFloating(trigger, menu, menuOpen, confirming, -2);
 
-  // TODO(backend): Open, Rename, Re-embed/Cancel, Move and Download need endpoints; for now they just close the menu.
+  // Only actions that really work (2026-11-23). Rename, re-embed, move and download
+  // need endpoints and come back with visitor uploads (December). Asking always
+  // searches the whole course, so the item says so.
   const items: MenuItem[] = [];
   if (failed) items.push({ label: "Run OCR", icon: "ocr", run: () => { onCloseMenu(); onRunOcr(); } });
-  items.push({ label: "Open PDF", icon: "open", run: onCloseMenu });
-  if (ready) items.push({ label: "Ask about this document", icon: "ask", run: () => { onCloseMenu(); onNavigate(askHref); } });
-  items.push({ label: "Rename", icon: "rename", run: onCloseMenu });
-  if (busy) items.push({ label: "Cancel processing", icon: "cancel", run: onCloseMenu });
-  else items.push({ label: "Re-embed passages", icon: "reembed", run: onCloseMenu });
-  items.push({ label: "Move to another course", icon: "move", run: onCloseMenu });
-  items.push({ label: "Download original", icon: "download", run: onCloseMenu });
-  items.push({ label: "Delete", icon: "delete", run: onConfirmDelete, danger: true, sep: true });
+  if (ready) items.push({ label: "Ask about this course", icon: "ask", run: () => { onCloseMenu(); onNavigate(askHref); } });
+  const source = doc.sourceUrl;
+  if (source) {
+    items.push({
+      label: "Open the original PDF",
+      icon: "open",
+      run: () => {
+        onCloseMenu();
+        // The author's own copy, in a new tab (noopener: it can't reach back into this page).
+        window.open(source, "_blank", "noopener,noreferrer");
+      },
+    });
+  }
+  // Sample documents are shared by every visitor, so only your own can be deleted.
+  if (canDelete) items.push({ label: "Delete", icon: "delete", run: onConfirmDelete, danger: true, sep: items.length > 0 });
 
   // Move focus into the menu when it opens (and to Cancel on the confirm step), per the ARIA menu pattern.
   useEffect(() => {

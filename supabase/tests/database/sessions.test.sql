@@ -22,7 +22,7 @@ insert into auth.users (id, is_anonymous) values
 select is(
     (select count(*)::int from public.courses 
       where session_id is null), 
-    3, 'exactly 3 shared sample courses exist');
+    2, 'exactly 2 shared sample courses exist (since 2026-11-23)');
 
 -- 23505 = unique_violation. Before the "nulls not 
 -- distinct" fix, this insert would have succeeded.
@@ -46,7 +46,7 @@ values ('00000000-0000-0000-0000-00000000000c', 'C notes');
 
 select is(
     (select count(*)::int from public.courses), 
-    4, 'a visitor sees the 3 samples plus their own');
+    3, 'a visitor sees the 2 samples plus their own');
 
 -- Updates and deletes the policies don't allow change 
 -- 0 rows without an error. We check as admin later.
@@ -66,7 +66,7 @@ values ('00000000-0000-0000-0000-00000000000d', 'D notes');
 
 select is(
   (select count(*)::int from public.courses),
-  4, 'D sees the samples and only their own course');
+  3, 'D sees the samples and only their own course');
 
 select lives_ok($$ select public.end_session() $$,
   'a visitor can end their own session');
@@ -92,7 +92,7 @@ reset role;
 select is(
   (select count(*)::int from public.courses
     where session_id is null and name <> 'hacked'),
-  3, 'visitors cannot rename or delete sample courses');
+  2, 'visitors cannot rename or delete sample courses');
 
 select is_empty($$
   select 1 from public.demo_sessions

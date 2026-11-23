@@ -4,7 +4,7 @@
  * The demo session is kept in localStorage here; the real one is an httpOnly cookie.
  */
 import { ANSWERS, CHATS, COURSE_STARTERS, COURSES, DYNO_RUNS, NEXT_RUN } from "./mock-data";
-import { cleanCode, cleanName, COURSE_LIMIT, courseNameError } from "../courses";
+import { cleanCode, cleanName, COURSE_LIMIT, COURSE_LIMIT_MESSAGE, courseNameError, ownCourseCount } from "../courses";
 import type { Answer, ChatMessage, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 const SESSION_KEY = "recall-demo";
@@ -98,7 +98,7 @@ function checkInput(input: CourseInput, selfId?: string) {
 
 export async function createCourse(input: CourseInput): Promise<Course> {
   await wait(150);
-  if (courses.length >= COURSE_LIMIT) throw new Error(`A demo can hold ${COURSE_LIMIT} courses.`);
+  if (ownCourseCount(courses) >= COURSE_LIMIT) throw new Error(COURSE_LIMIT_MESSAGE);
   checkInput(input);
   const course: Course = {
     id: `c-${Date.now().toString(36)}`,
