@@ -1,0 +1,178 @@
+# Dyno's golden set, v0: questions with known right answers.
+#
+# Each question is labelled with the page(s) that answer it.
+# Dyno asks the retriever each question (no answer model)
+# and checks where those pages land in the ranking:
+#   recall@5 = share of questions with a right page in the top 5
+#   MRR      = average of 1 / (rank of the first right page)
+#
+# Rules for labels:
+# - `document` is the display name from api/samples.toml,
+#   exactly as match_chunks() returns it.
+# - `pages` are VIEWER pages (page 1 = the PDF's first page),
+#   the same numbers citations show. The printed number at
+#   the bottom of the page is different: viewer + 20 (Ch 1),
+#   + 96 (Ch 3), + 158 (Ch 4), + 272 (Ch 8).
+# - List every page that answers the question on its own.
+#   A hit on ANY of them counts. Don't list pages that only
+#   mention the topic.
+# - `answer` is a short reference answer in our own words:
+#   it's how you check the label, and Dyno v1 will use it
+#   to grade answers (correctness).
+# - Never change a question after a run to make a number
+#   go up. Add new questions instead (and say so in the
+#   build log): the baseline is only fair if the set is
+#   fixed.
+#
+# Source: Jeff Erickson, "Algorithms" (2019), CC BY 4.0.
+# All questions are asked in the Algorithms sample course.
+
+course_id = "00000000-0000-0000-0000-00000000c001"
+
+# ---------- Chapter 1: Recursion ----------
+
+[[question]]
+id = "rec-01"
+question = "How many moves does the recursive Tower of Hanoi algorithm make for n disks?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [6]
+answer = "T(n) = 2T(n-1) + 1, so exactly 2^n - 1 moves (64 disks take 2^64 - 1)."
+
+[[question]]
+id = "rec-02"
+question = "What is the running time of mergesort and where does it come from?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [8, 13]
+answer = "The recurrence T(n) = 2T(n/2) + O(n); every level of the recursion tree costs the same, so O(n log n)."
+
+[[question]]
+id = "rec-03"
+question = "Why can quicksort take quadratic time?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [10]
+answer = "If the pivot is always the smallest or largest element, one side is empty: T(n) = T(n-1) + O(n) = O(n^2). Median-of-three doesn't fix the worst case."
+
+[[question]]
+id = "rec-04"
+question = "Why is the median of medians a good pivot for selection?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [17, 18]
+answer = "It's larger than at least 3n/10 elements and smaller than at least 3n/10, so the recursive call gets at most 7n/10 elements, which gives linear time."
+
+[[question]]
+id = "rec-05"
+question = "How does Karatsuba's algorithm multiply two n-digit numbers faster than O(n^2)?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [20, 21]
+answer = "It gets the middle coefficient bc + ad from ac, bd and one more product, so 3 recursive multiplications instead of 4: O(n^lg 3), about O(n^1.585)."
+
+# ---------- Chapter 3: Dynamic programming ----------
+
+[[question]]
+id = "dp-01"
+question = "Why is the plain recursive Fibonacci algorithm so slow?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [3, 4]
+answer = "It recomputes the same values over and over: the number of calls grows like F(n), exponential in n. Memoizing brings it down to O(n) additions."
+
+[[question]]
+id = "dp-02"
+question = "Why is it called dynamic programming?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [5, 6]
+answer = "Richard Bellman named it in the 1950s at RAND: 'programming' meant planning schedules, and 'dynamic' was partly a buzzword chosen to hide the mathematics from his bosses."
+
+[[question]]
+id = "dp-03"
+question = "Why shouldn't I just use a greedy algorithm instead of dynamic programming?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [11, 12]
+answer = "Greedy algorithms almost never give the optimal answer (e.g. for text segmentation or longest increasing subsequence); one that works still needs a proof, so use dynamic programming."
+
+[[question]]
+id = "dp-04"
+question = "What recurrence defines the edit distance between two strings?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [16, 17]
+answer = "Edit(i, j) = i if j = 0, j if i = 0, otherwise the minimum of Edit(i, j-1) + 1, Edit(i-1, j) + 1 and Edit(i-1, j-1) + [A[i] != B[j]]."
+
+[[question]]
+id = "dp-05"
+question = "How fast is the dynamic programming algorithm for subset sum?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [21]
+answer = "O(nT) time and space, much better than the O(2^n) backtracking algorithm when the target T is small."
+
+# ---------- Chapter 4: Greedy algorithms ----------
+
+[[question]]
+id = "greedy-01"
+question = "In what order should files be stored on a tape to make reading them cheapest?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [2, 3]
+answer = "By increasing length when every file is equally likely; with different access frequencies, by increasing ratio of length to frequency (L/F)."
+
+[[question]]
+id = "greedy-02"
+question = "Which class does the greedy scheduling algorithm choose first, and why is that safe?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [4, 5]
+answer = "The class that finishes first; an exchange argument shows some optimal schedule contains it, so the greedy schedule is optimal."
+
+[[question]]
+id = "greedy-03"
+question = "How does Huffman's algorithm build an optimal prefix-free code?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [8]
+answer = "Repeatedly merge the two least frequent characters into one new character whose frequency is their sum, and recurse."
+
+[[question]]
+id = "greedy-04"
+question = "When is a matching between doctors and hospitals unstable?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [13]
+answer = "When some doctor and hospital would both rather be matched with each other than with their current matches."
+
+[[question]]
+id = "greedy-05"
+question = "Does it matter which hospital makes its offer first in the Gale-Shapley algorithm?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [17, 18]
+answer = "No: whichever unassigned hospital offers in each round, the algorithm ends with the same stable matching, the best one for every hospital."
+
+# ---------- Chapter 8: Shortest paths ----------
+
+[[question]]
+id = "sssp-01"
+question = "When is an edge tense, and what does relaxing it do?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [4, 5]
+answer = "u->v is tense if dist(u) + w(u->v) < dist(v); relaxing sets dist(v) to dist(u) + w(u->v) and pred(v) to u."
+
+[[question]]
+id = "sssp-02"
+question = "How fast is breadth-first search for shortest paths in an unweighted graph?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [9]
+answer = "O(V + E): each vertex is pulled from the queue once and each edge is checked once."
+
+[[question]]
+id = "sssp-03"
+question = "How do you compute shortest paths in a DAG that has negative edges?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [10, 11]
+answer = "Process the vertices in topological order, relaxing edges as you go; there are no cycles, so negative edges are fine, and it takes O(V + E)."
+
+[[question]]
+id = "sssp-04"
+question = "What is the running time of Dijkstra's algorithm with a binary heap?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [16]
+answer = "O(E log V)."
+
+[[question]]
+id = "sssp-05"
+question = "How can Bellman-Ford tell that a graph has a negative cycle?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [20]
+answer = "Without negative cycles it's done after V - 1 iterations; if any edge is still tense after that, the graph has a negative cycle."
