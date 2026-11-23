@@ -28,12 +28,17 @@ function verdictFor(run: BenchRun, metric: BenchMetric, value: number) {
   if (run.gate === "base") return "The baseline. Every later run is measured against these scores, and the redline sits 0.02 below each one.";
   if (run.gate === "fail" && run.failed) {
     const f = run.failed;
-    return `${BENCH_METRICS[f].label} fell to ${run[f].toFixed(2)}, under its ${redlineOf(f).toFixed(2)} redline. Dyno blocked the merge, so this change never shipped.`;
+    return `${BENCH_METRICS[f].label} fell to ${run[f].toFixed(2)}, under its ${redlineOf(f).toFixed(2)} redline, so Dyno would block the merge and the change wouldn’t ship.`;
   }
-  return `Every score cleared its redline, so the change merged. ${BENCH_METRICS[metric].label} moved ${delta(value, baselineOf(metric))} against the baseline.`;
+  return `Every score clears its redline, so the change would merge. ${BENCH_METRICS[metric].label} moved ${delta(value, baselineOf(metric))} against the baseline.`;
 }
 
-/** "Every change goes on the dyno": interactive gauge + run rail + the selected run's card. */
+/**
+ * "Every change goes on the dyno": interactive gauge + run rail + the selected run's card.
+ * An EXAMPLE of the workflow Dyno is built for (decided 2026-11-22): the runs are
+ * illustrative, not history, so nothing here has a date or says it merged. The real
+ * runs are on /dyno (and the receipt above prints the latest one).
+ */
 export function DynoBench() {
   const [runId, setRunId] = useState(LATEST_ID);
   const [metric, setMetric] = useState<BenchMetric>("recall");
@@ -75,7 +80,7 @@ export function DynoBench() {
               width="100%"
               viewBox="0 0 200 150"
               role="img"
-              aria-label={`${m.label} for run ${run.id}: ${value.toFixed(2)}, redline ${red.toFixed(2)}${inRed ? ", below the redline" : ", clear of the redline"}`}
+              aria-label={`${m.label} for example run ${run.id}: ${value.toFixed(2)}, redline ${red.toFixed(2)}${inRed ? ", below the redline" : ", clear of the redline"}`}
               className={`${styles.gauge} mx-auto mt-3.5 block max-w-[380px]`}
             >
               <path d={ARC} pathLength={1} fill="none" stroke="var(--sheet-2)" strokeWidth="12" />
@@ -135,7 +140,7 @@ export function DynoBench() {
                       type="button"
                       className={styles.stop}
                       aria-pressed={on}
-                      aria-label={`Run ${r.id}, ${r.change}${rFail ? ", blocked at the redline" : ""}`}
+                      aria-label={`Example run ${r.id}, ${r.change}${rFail ? ", blocked at the redline" : ""}`}
                       onClick={() => pick(r)}
                     >
                       <span
@@ -167,7 +172,7 @@ export function DynoBench() {
           Every change goes on the dyno. <span className="text-red">Below the redline, it doesn’t ship.</span>
         </h2>
         <p className="mb-0 mt-5 max-w-[32em] text-[17px] leading-[1.6] text-ink-2">
-          Dyno runs a hand-labeled question set on every pull request. Pick a run on the bench to see how each change scored.
+          An example of how Dyno gates a change: score it on a hand-labeled question set, compare it with the baseline, and block it below the redline. Pick a run on the bench to see how each one would score.
         </p>
         <div
           aria-live="polite"
@@ -175,11 +180,9 @@ export function DynoBench() {
           style={{ transition: "background-color 200ms ease, border-color 200ms ease" }}
         >
           <div className="flex flex-wrap justify-between gap-2 font-mono text-xs text-ink-2">
-            <span className="num">
-              Run {run.id} · {run.date}
-            </span>
+            <span className="num">Example run {run.id}</span>
             <span className={`font-medium ${fail ? "text-bad" : run.gate === "pass" ? "text-good" : "text-ink-2"}`}>
-              {run.gate === "base" ? "BASELINE" : fail ? "REDLINE · BLOCKED" : "CLEAR · MERGED"}
+              {run.gate === "base" ? "BASELINE" : fail ? "REDLINE · WOULD BLOCK" : "CLEAR · WOULD MERGE"}
             </span>
           </div>
           <p className="mb-0 mt-2.5 text-lg font-medium">{run.change}</p>
@@ -203,7 +206,7 @@ export function DynoBench() {
           <Link href="/dyno" className="btn btn-ghost inline-flex items-center gap-3 rounded-[5px] py-[11px] pl-5 pr-[11px] text-base font-medium">
             Open the dashboard <kbd className="kbd kbd-ink" aria-hidden="true">D</kbd>
           </Link>
-          <span className="text-[13px] text-ink-2">Scores shown are sample data.</span>
+          <span className="text-[13px] text-ink-2">Example scores, not real runs. The dashboard has the real ones.</span>
         </div>
       </div>
     </section>

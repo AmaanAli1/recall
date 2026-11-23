@@ -33,20 +33,34 @@ test.describe("landing page", () => {
   test("dyno bench metric toggle changes the shown metric", async ({ page }) => {
     await page.goto("/");
     const metric = page.getByRole("group", { name: "Metric" });
-    const gauge = page.getByRole("img", { name: /for run 12/ });
+    const gauge = page.getByRole("img", { name: /for example run 12/ });
     await expect(metric.getByRole("button", { name: "Recall@5" })).toHaveAttribute("aria-pressed", "true");
-    await expect(gauge).toHaveAccessibleName(/^Recall@5 for run 12: 0\.86/);
+    await expect(gauge).toHaveAccessibleName(/^Recall@5 for example run 12: 0\.86/);
     await metric.getByRole("button", { name: "Faithfulness" }).click();
     await expect(metric.getByRole("button", { name: "Faithfulness" })).toHaveAttribute("aria-pressed", "true");
     await expect(metric.getByRole("button", { name: "Recall@5" })).toHaveAttribute("aria-pressed", "false");
-    await expect(gauge).toHaveAccessibleName(/^Faithfulness for run 12: 0\.91/);
+    await expect(gauge).toHaveAccessibleName(/^Faithfulness for example run 12: 0\.91/);
   });
 
   test("dyno bench: picking the blocked run switches to the failing metric", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("group", { name: "Choose a run" }).getByRole("button", { name: /^Run 9,/ }).click();
-    await expect(page.getByRole("img", { name: /^Faithfulness for run 9: 0\.83.*below the redline/ })).toBeVisible();
-    await expect(page.getByText("REDLINE · BLOCKED")).toBeVisible();
+    await page.getByRole("group", { name: "Choose a run" }).getByRole("button", { name: /^Example run 9,/ }).click();
+    await expect(page.getByRole("img", { name: /^Faithfulness for example run 9: 0\.83.*below the redline/ })).toBeVisible();
+    await expect(page.getByText("REDLINE · WOULD BLOCK")).toBeVisible();
+  });
+
+  test("the bench is labelled as an example and the receipt prints the real run 1", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText("Example scores, not real runs. The dashboard has the real ones.")).toBeVisible();
+    await expect(page.getByText(/on every pull request/)).toHaveCount(0);
+    await expect(page.getByText(/MERGED/)).toHaveCount(0);
+    const receipt = page.locator("figure").filter({ hasText: "DYNO PRINTOUT" });
+    await expect(receipt).toContainText("run 1 · Nov 22");
+    await expect(receipt).toContainText('dyno_run --change "Baseline"');
+    await expect(receipt).toContainText("20/20");
+    await expect(receipt).toContainText("0.63–0.89");
+    await expect(receipt).toContainText("Real output from run 1: 20 golden questions, retrieval only.");
+    await expect(receipt).not.toContainText(/MLflow|p95/);
   });
 
   test("returning visitor sees Resume your demo", async ({ page }) => {

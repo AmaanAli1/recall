@@ -8,5 +8,5 @@ export const BUILD = {
   /** Index into PHASES of the phase being built now. */
   current: 3,
   /** Roughly how far into the current phase, 0–1. */
-  progress: 0.05,
+  progress: 0.4,
 };

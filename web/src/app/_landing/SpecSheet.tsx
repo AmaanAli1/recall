@@ -1,4 +1,4 @@
-import { RECEIPT } from "./bench-data";
+import { REAL_RUNS, f2, formatRunDate, hitsAt } from "@/lib/dyno-results";
 import { ArrowRight } from "./icons";
 import { REPO_URL } from "./MarketingNav";
 import styles from "./landing.module.css";
@@ -14,10 +14,22 @@ const SPEC = [
   ["Tuned on", "Dyno · hand-labeled golden set"],
 ] as const;
 
-const TONE = { good: "text-good", mid: "text-mid", bad: "text-bad" } as const;
-
-/** The pinned "Dyno printout" receipt: a sample CLI run, tilted, swings on hover. */
+/**
+ * The pinned "Dyno printout" receipt, tilted, swings on hover. It prints the latest real
+ * run from the Dyno script (src/data/dyno-runs.json): what v0 measures, and "v1" for what
+ * it doesn't yet. No sample numbers (decided 2026-11-22).
+ */
 function Receipt() {
+  const run = REAL_RUNS.at(-1);
+  if (!run) return null; // nothing real to print yet
+  const { recall5, mrr } = run.metrics;
+  const rows = [
+    { k: "recall@5", v: f2(recall5.value), note: `${hitsAt(run, 5)}/${run.n}` },
+    { k: "mrr", v: f2(mrr.value), note: `${f2(mrr.low)}–${f2(mrr.high)}` },
+    { k: "faithfulness", v: "—", note: "v1" },
+    { k: "relevancy", v: "—", note: "v1" },
+  ];
+  const baseline = REAL_RUNS.length === 1;
   return (
     <figure className={`${styles.receipt} sheet relative mb-0 ml-0 mr-0 mt-12 max-w-[340px]`}>
       {/* Push-pin and its shadow */}
@@ -31,36 +43,28 @@ function Receipt() {
         <div className="flex items-baseline justify-between font-mono text-xs text-ink-2">
           <span translate="no">DYNO PRINTOUT</span>
           <span className="num">
-            run {RECEIPT.run} · {RECEIPT.date}
+            run {run.id.slice(1)} · {formatRunDate(run.date, false)}
           </span>
         </div>
         <p translate="no" className="mb-3 mt-3.5 font-mono text-[13px] text-ink">
-          <span className="text-red">$</span> dyno run --suite smoke
+          <span className="text-red">$</span> dyno_run --change &quot;{run.change}&quot;
         </p>
         <div translate="no" className="num flex flex-col gap-1.5 border-y border-dashed border-line-2 py-3 font-mono text-[13px]">
-          {RECEIPT.rows.map((r) => (
+          {rows.map((r) => (
             <div key={r.k} className="flex gap-3">
               <span className="flex-auto">{r.k}</span>
-              <span className="w-14 text-right">{r.v}</span>
-              <span className={`w-14 text-right ${TONE[r.tone]}`}>{r.d}</span>
+              <span className={`w-12 text-right ${r.v === "—" ? "text-ink-3" : ""}`}>{r.v}</span>
+              <span className="w-[5.5rem] text-right text-ink-2">{r.note}</span>
             </div>
           ))}
-          <div className="flex gap-3">
-            <span className="flex-auto">p95 latency</span>
-            <span className="w-14 text-right">{RECEIPT.latency.v}</span>
-            <span className={`w-14 text-right ${TONE[RECEIPT.latency.tone]}`}>{RECEIPT.latency.d}</span>
-          </div>
         </div>
         <div className="mt-3 flex items-center justify-between font-mono text-[13px]">
           <span>gate</span>
-          <span className="inline-flex items-center gap-1.5 font-medium text-good">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12l5 5L20 7" />
-            </svg>
-            CLEAR
-          </span>
+          <span className="font-medium text-ink-2">{baseline ? "BASELINE" : "LOGGED"}</span>
         </div>
-        <figcaption className="mt-3.5 text-xs text-ink-2">Sample output. Every run is logged to MLflow.</figcaption>
+        <figcaption className="mt-3.5 text-xs text-ink-2">
+          Real output from run {run.id.slice(1)}: {run.n} golden questions, retrieval only.
+        </figcaption>
       </div>
       {/* Torn zig-zag bottom edge */}
       <div

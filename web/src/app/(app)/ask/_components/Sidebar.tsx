@@ -128,7 +128,7 @@ function GlanceCard({ course, glance }: { course: Course | undefined; glance: Gl
             </div>
             <div>
               <p className="m-0 font-mono text-[17px]">{glance?.recall != null ? glance.recall.toFixed(2) : "—"}</p>
-              <p className="m-0 mt-0.5 text-xs text-ink-2">recall@5{glance?.recall != null ? ` · ${glance.clear ? "clear" : "below the line"}` : ""}</p>
+              <p className="m-0 mt-0.5 text-xs text-ink-2">recall@5{glance?.recall != null ? ` · ${glance.gate === "below" ? "below the line" : glance.gate}` : ""}</p>
             </div>
           </div>
 
