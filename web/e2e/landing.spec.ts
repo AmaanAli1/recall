@@ -61,6 +61,11 @@ test.describe("landing page", () => {
     await expect(receipt).toContainText("0.63–0.89");
     await expect(receipt).toContainText("Real output from run 1: 20 golden questions, retrieval only.");
     await expect(receipt).not.toContainText(/MLflow|p95/);
+    // The spec sheet states only what's built; the rest says "planned".
+    const spec = page.getByRole("region", { name: "The spec sheet." });
+    await expect(spec).toContainText("Vector search (pgvector) · reranking planned");
+    await expect(spec).toContainText("Dyno run log · tracing planned");
+    await expect(spec).not.toContainText(/Langfuse|cross-encoder/);
   });
 
   test("returning visitor sees Resume your demo", async ({ page }) => {

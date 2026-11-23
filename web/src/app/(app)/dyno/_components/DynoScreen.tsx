@@ -103,19 +103,12 @@ export function DynoScreen() {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  if (!runs) {
-    return (
-      <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14" aria-busy="true">
-        <p className="text-ink-2" role="status">
-          Loading runs…
-        </p>
-      </main>
-    );
-  }
-
-  // No sample runs (the normal case; tests opt into those): show the real runs the
-  // Dyno script committed (v0: retrieval only), or the empty state if there are none.
-  if (runs.length === 0) {
+  // The real runs are a static file, so they render straight away, also in the
+  // prerendered HTML: no "Loading…" flash. That matters for scrolling too: a short
+  // loading page let the browser's scroll anchoring jump to the bottom when the
+  // results arrived (coming from a link low on the landing page). Only the sample
+  // runs (a test/design fixture, read from localStorage) arrive later and replace it.
+  if (!runs || runs.length === 0) {
     return (
       <main id="main" className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 pb-[88px] pt-14">
         {REAL_RUNS.length > 0 ? <DynoResults runs={REAL_RUNS} /> : <DynoEmpty />}

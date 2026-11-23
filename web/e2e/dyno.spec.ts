@@ -29,9 +29,35 @@ test.describe("dyno with the real runs (no sample runs)", () => {
     await expect(table.getByRole("rowheader", { name: /R1/ })).toBeVisible();
     await table.getByRole("button", { name: "Show details for run 1" }).click();
     await expect(table.getByRole("link", { name: /^[0-9a-f]{7}$/ })).toHaveAttribute("href", /github\.com\/AmaanAli1\/recall\/commit\//);
-    // Every golden question has a rank row.
+    // The ranks table starts collapsed behind a summary; opening it shows every golden question.
+    await expect(page.getByText("12 × 1st · 5 × 2nd · 1 × 3rd · 2 × 5th")).toBeVisible();
+    const ranks = page.getByRole("button", { name: "Show all 20 questions" });
+    await expect(ranks).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("group", { name: "Question ranks table" })).toBeHidden();
+    await ranks.click();
+    await expect(page.getByRole("button", { name: "Hide the questions" })).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("group", { name: "Question ranks table" }).getByRole("rowheader")).toHaveCount(20);
   });
+});
+
+test.describe("arriving at /dyno from the landing page", () => {
+  for (const [label, link] of [
+    ["the bench's Open the dashboard", (page: Page) => page.getByRole("link", { name: /Open the dashboard/ })],
+    ["the footer's Dyno results", (page: Page) => page.getByRole("contentinfo").getByRole("link", { name: "Dyno results" })],
+  ] as const) {
+    test(`${label} opens the page at the top @mobile`, async ({ page }) => {
+      await page.goto("/");
+      const target = link(page);
+      await target.scrollIntoViewIfNeeded(); // far down the landing page
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+      await target.click();
+      await expect(page).toHaveURL(/\/dyno$/);
+      await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+      // Give a late layout shift (the old bug: scroll anchoring) time to happen.
+      await page.waitForTimeout(500);
+      expect(await page.evaluate(() => window.scrollY)).toBeLessThan(50);
+    });
+  }
 });
 
 test.describe("dyno with sample runs", () => {
