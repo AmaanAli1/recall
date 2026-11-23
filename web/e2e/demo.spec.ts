@@ -17,8 +17,21 @@ test.describe("demo boot", () => {
     await expect(page.getByText(/demo-[A-Z0-9]{4}-[A-Z0-9]{2}/)).toBeVisible();
     await expect(page.getByText("3 sample courses · 15 lecture PDFs")).toBeVisible();
 
+    // A full page load, not an in-app jump: with real sessions, an in-app jump would
+    // re-use the session gate's cached redirect and land back on /demo (PR #45).
+    await page.evaluate(() => ((window as unknown as { __sameDocument?: boolean }).__sameDocument = true));
     await page.getByRole("link", { name: /Open my notebook/ }).click();
     await expect(page).toHaveURL(/\/ask$/);
+    expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBeUndefined();
+  });
+
+  test("Enter on the ready card also opens the notebook with a full page load", async ({ page }) => {
+    await page.goto("/demo?next=%2Flibrary");
+    await expect(page.getByRole("heading", { name: "Your demo notebook is ready." })).toBeVisible();
+    await page.evaluate(() => ((window as unknown as { __sameDocument?: boolean }).__sameDocument = true));
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/library$/);
+    expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBeUndefined();
   });
 
   test("replay re-runs the card without issuing a new session", async ({ page }) => {

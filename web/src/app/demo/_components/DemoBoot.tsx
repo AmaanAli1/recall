@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { getDemoSession } from "@/lib/api";
 import { markFreshArrival } from "@/lib/demo-flags";
@@ -14,12 +13,24 @@ import { useDemoBoot } from "./useDemoBoot";
 const noSubscribe = () => () => {};
 
 /**
+ * Leave /demo with a FULL page load, not an in-app navigation. Next.js prefetches
+ * visible links and keeps the answer; the notebook link (and the header link that
+ * brought the visitor here) was prefetched before the session existed, so the
+ * kept answer is the session gate's redirect back to /demo, and an in-app jump
+ * would just land on this page again (PR #45). A full load asks the server afresh,
+ * with the new session cookie.
+ */
+function leaveTo(path: string, replace = false) {
+  if (replace) window.location.replace(path);
+  else window.location.assign(path);
+}
+
+/**
  * Boot screen: issues the demo session, then hands the visitor on: to Ask, or to
  * the page they were sent here from (?next=/library, set by the session gate in
  * proxy.ts). `next` is checked by safeNext, so it can only ever be Ask or Library.
  */
 export function DemoBoot() {
-  const router = useRouter();
   const { state, start, replay, retry } = useDemoBoot();
   // Not useSearchParams: /demo is a static page, and that would need a Suspense
   // boundary. On the server (and while hydrating) there's no URL: Ask.
@@ -35,13 +46,13 @@ export function DemoBoot() {
       .catch(() => null) // can't tell? boot anyway; a real outage surfaces on step 1
       .then((existing) => {
         if (cancelled) return;
-        if (existing) router.replace(next);
+        if (existing) leaveTo(next, true);
         else start();
       });
     return () => {
       cancelled = true;
     };
-  }, [router, start]);
+  }, [start]);
 
   // The CTA shows a ⏎ keycap, so Enter anywhere on the page (not on another control) opens the notebook.
   useEffect(() => {
@@ -51,11 +62,11 @@ export function DemoBoot() {
       if ((e.target as Element | null)?.closest("a, button, input, textarea, select, [contenteditable]")) return;
       e.preventDefault();
       markFreshArrival();
-      router.push(dest);
+      leaveTo(dest);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [state.issued, router, dest]);
+  }, [state.issued, dest]);
 
   const phase = [state.shown && styles.shown, state.revealed && styles.revealed, state.issued && styles.issued]
     .filter(Boolean)
@@ -79,7 +90,13 @@ export function DemoBoot() {
       >
         <Link
           href={dest}
-          onClick={markFreshArrival}
+          // No prefetch (it would only fetch the gate's redirect), and a full load on click.
+          prefetch={false}
+          onClick={(e) => {
+            e.preventDefault();
+            markFreshArrival();
+            leaveTo(dest);
+          }}
           className="btn btn-red inline-flex items-center gap-3 rounded-[5px] py-[11px] pr-[11px] pl-5 text-base font-medium"
         >
           Open my notebook <kbd className="kbd">⏎</kbd>
