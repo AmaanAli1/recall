@@ -250,7 +250,20 @@ function RunSetup({ run }: { run: RealRun }) {
 
 const ordinal = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
 
+/** ["12 × 1st", "5 × 2nd", …, "1 × not in top 10"], best ranks first. */
+function rankSummary(run: RealRun): string[] {
+  const counts = new Map<number | null, number>();
+  for (const q of run.questions) counts.set(q.rank, (counts.get(q.rank) ?? 0) + 1);
+  const ranks = [...counts.keys()].sort((a, b) => (a ?? 99) - (b ?? 99));
+  return ranks.map((r) => `${counts.get(r)} × ${r === null ? "not in top 10" : ordinal(r)}`);
+}
+
+/**
+ * Every question's rank. Collapsed by default (20 rows is a lot to scroll past):
+ * the summary line says how the ranks fell, and the button opens the full table.
+ */
 function QuestionRanks({ run }: { run: RealRun }) {
+  const [open, setOpen] = useState(false);
   const notFirst = run.questions.filter((q) => q.rank !== 1).length;
   return (
     <section aria-labelledby="ranks-h" className="mt-6">
@@ -261,48 +274,79 @@ function QuestionRanks({ run }: { run: RealRun }) {
         </span>
       </div>
       <div className="sheet">
-        <div role="group" aria-label="Question ranks table" tabIndex={0} className="relative overflow-x-auto rounded border border-line bg-sheet">
-          <table className="num w-full min-w-[620px] border-collapse text-[15px]">
-            <thead>
-              <tr className="text-left text-xs text-ink-2">
-                <th scope="col" className="px-5 py-3.5 font-medium">Question</th>
-                <th scope="col" className="px-4 py-3.5 font-medium">Chapter</th>
-                <th scope="col" className="px-4 py-3.5 text-right font-medium">Right page ranked</th>
-                <th scope="col" className="py-3.5 pl-4 pr-5 font-medium">Top result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {run.questions.map((q) => {
-                const top = q.top[0];
-                return (
-                  <tr key={q.id} className="border-t border-line">
-                    <th scope="row" className="whitespace-nowrap px-5 py-3 text-left font-mono text-sm font-normal">
-                      {q.id}
-                    </th>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">{questionChapter(q.id)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      {q.rank === null ? (
-                        <Chip tone="bad">Not in top 10</Chip>
-                      ) : q.rank === 1 ? (
-                        <span className="font-mono text-sm">1st</span>
-                      ) : (
-                        <Chip tone={q.rank <= 5 ? "mid" : "bad"}>{ordinal(q.rank)}</Chip>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap py-3 pl-4 pr-5 font-mono text-sm text-ink-2">
-                      {top ? `${chapterOf(top.file)} p. ${top.page} · ${top.score.toFixed(2)}` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-line bg-sheet px-5 py-3.5">
+          <p className="num m-0 font-mono text-sm">
+            {/* Each "count × rank" stays on one line; lines only break between groups. */}
+            {rankSummary(run).map((part, i) => (
+              <Fragment key={part}>
+                {i > 0 && " · "}
+                <span className="whitespace-nowrap">{part}</span>
+              </Fragment>
+            ))}
+          </p>
+          <button
+            type="button"
+            className={s.detBtn}
+            aria-expanded={open}
+            aria-controls="ranks-table"
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? "Hide the questions" : `Show all ${run.n} questions`}
+            <svg className={s.detChev} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
         </div>
       </div>
-      <p className="mt-3 text-sm text-ink-2">
-        The score is cosine similarity between the question and the passage (1 = same meaning). A question counts as found when a
-        chunk from one of its labelled pages comes back.
-      </p>
+      <div id="ranks-table" className={cx(s.collapse, open && s.open)} inert={!open}>
+        <div className={s.clip}>
+          <div className={cx(s.slide, "pt-3")}>
+            <div className="sheet">
+              <div role="group" aria-label="Question ranks table" tabIndex={0} className="relative overflow-x-auto rounded border border-line bg-sheet">
+                <table className="num w-full min-w-[620px] border-collapse text-[15px]">
+                  <thead>
+                    <tr className="text-left text-xs text-ink-2">
+                      <th scope="col" className="px-5 py-3.5 font-medium">Question</th>
+                      <th scope="col" className="px-4 py-3.5 font-medium">Chapter</th>
+                      <th scope="col" className="px-4 py-3.5 text-right font-medium">Right page ranked</th>
+                      <th scope="col" className="py-3.5 pl-4 pr-5 font-medium">Top result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {run.questions.map((q) => {
+                      const top = q.top[0];
+                      return (
+                        <tr key={q.id} className="border-t border-line">
+                          <th scope="row" className="whitespace-nowrap px-5 py-3 text-left font-mono text-sm font-normal">
+                            {q.id}
+                          </th>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm">{questionChapter(q.id)}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            {q.rank === null ? (
+                              <Chip tone="bad">Not in top 10</Chip>
+                            ) : q.rank === 1 ? (
+                              <span className="font-mono text-sm">1st</span>
+                            ) : (
+                              <Chip tone={q.rank <= 5 ? "mid" : "bad"}>{ordinal(q.rank)}</Chip>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pl-4 pr-5 font-mono text-sm text-ink-2">
+                            {top ? `${chapterOf(top.file)} p. ${top.page} · ${top.score.toFixed(2)}` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-ink-2">
+              The score is cosine similarity between the question and the passage (1 = same meaning). A question counts as found when a
+              chunk from one of its labelled pages comes back.
+            </p>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

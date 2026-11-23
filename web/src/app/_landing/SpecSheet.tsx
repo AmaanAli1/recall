@@ -7,10 +7,10 @@ const SPEC = [
   ["Engine", "FastAPI · Python"],
   ["Intake", "PyMuPDF, page-aware chunking"],
   ["Fuel", "OpenAI embeddings + chat"],
-  ["Transmission", "Keyword + vector → cross-encoder rerank"],
+  ["Transmission", "Vector search (pgvector) · reranking planned"],
   ["Chassis", "Next.js on Vercel"],
   ["Storage", "Postgres + pgvector (Supabase)"],
-  ["Telemetry", "Langfuse traces · MLflow runs"],
+  ["Telemetry", "Dyno run log · tracing planned"],
   ["Tuned on", "Dyno · hand-labeled golden set"],
 ] as const;
 
@@ -80,7 +80,10 @@ function Receipt() {
   );
 }
 
-/** "The spec sheet": what Recall is built from, as a car-style spec list. */
+/**
+ * "The spec sheet": what Recall is built from, as a car-style spec list. Only what's
+ * built is stated as fact; parts on the roadmap say "planned" (2026-11-22).
+ */
 export function SpecSheet() {
   return (
     <section id="spec" aria-labelledby="spec-h" className="relative mx-auto flex max-w-[1200px] flex-wrap gap-14 px-6 pb-24 pt-12">
