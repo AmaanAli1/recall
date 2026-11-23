@@ -2,26 +2,40 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { getDemoSession } from "@/lib/api";
 import { markFreshArrival } from "@/lib/demo-flags";
+import { DEFAULT_NEXT, NEXT_PARAM, safeNext } from "@/lib/session-gate";
 import styles from "../demo.module.css";
 import { LibraryCard } from "./LibraryCard";
 import { useDemoBoot } from "./useDemoBoot";
 
-/** Boot screen: issues the demo session, then hands the visitor to Ask. */
+/** The URL doesn't change while /demo is open, so there's nothing to subscribe to. */
+const noSubscribe = () => () => {};
+
+/**
+ * Boot screen: issues the demo session, then hands the visitor on: to Ask, or to
+ * the page they were sent here from (?next=/library, set by the session gate in
+ * proxy.ts). `next` is checked by safeNext, so it can only ever be Ask or Library.
+ */
 export function DemoBoot() {
   const router = useRouter();
   const { state, start, replay, retry } = useDemoBoot();
+  // Not useSearchParams: /demo is a static page, and that would need a Suspense
+  // boundary. On the server (and while hydrating) there's no URL: Ask.
+  const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
+  const dest = search ? safeNext(new URLSearchParams(search).get(NEXT_PARAM)) : DEFAULT_NEXT;
 
   // Returning visitors already hold a card: skip the ceremony.
   useEffect(() => {
     let cancelled = false;
+    // Read the URL right here: this runs once, possibly before `dest` updates.
+    const next = safeNext(new URLSearchParams(window.location.search).get(NEXT_PARAM));
     getDemoSession()
       .catch(() => null) // can't tell? boot anyway; a real outage surfaces on step 1
       .then((existing) => {
         if (cancelled) return;
-        if (existing) router.replace("/ask");
+        if (existing) router.replace(next);
         else start();
       });
     return () => {
@@ -37,11 +51,11 @@ export function DemoBoot() {
       if ((e.target as Element | null)?.closest("a, button, input, textarea, select, [contenteditable]")) return;
       e.preventDefault();
       markFreshArrival();
-      router.push("/ask");
+      router.push(dest);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [state.issued, router]);
+  }, [state.issued, router, dest]);
 
   const phase = [state.shown && styles.shown, state.revealed && styles.revealed, state.issued && styles.issued]
     .filter(Boolean)
@@ -64,7 +78,7 @@ export function DemoBoot() {
         inert={!state.everIssued}
       >
         <Link
-          href="/ask"
+          href={dest}
           onClick={markFreshArrival}
           className="btn btn-red inline-flex items-center gap-3 rounded-[5px] py-[11px] pr-[11px] pl-5 text-base font-medium"
         >

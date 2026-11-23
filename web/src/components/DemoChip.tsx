@@ -3,14 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { endDemoSession, getDemoSession, type DemoSession } from "@/lib/api";
+import { DemoLink } from "./DemoLink";
 
 /**
  * "● Demo · kept 24 h" chip in the app nav. Opens a popover with the session
  * details and a guarded "Start fresh" that deletes the session.
+ *
+ * With no session (e.g. a visitor who came to /dyno from the landing page), it's
+ * a "Start the demo" link instead: saying "kept 24 h" there would be untrue.
+ * DemoLink also opens the stand-by dialog while the demo is on standby.
  */
 export function DemoChip() {
   const router = useRouter();
-  const [session, setSession] = useState<DemoSession | null>(null);
+  // undefined = still checking; null = no session.
+  const [session, setSession] = useState<DemoSession | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -54,6 +60,26 @@ export function DemoChip() {
     router.push("/demo");
   };
 
+  if (session === undefined) {
+    // Keep the chip's space while checking, so the header doesn't jump.
+    return (
+      <span className="demo-chip invisible" aria-hidden="true">
+        Demo · kept 24&nbsp;h
+      </span>
+    );
+  }
+
+  if (session === null) {
+    return (
+      <DemoLink className="demo-chip text-ink">
+        Start the demo
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </DemoLink>
+    );
+  }
+
   return (
     <div ref={root} className="relative max-sm:static">
       <button
@@ -81,7 +107,7 @@ export function DemoChip() {
           </p>
           <dl className="num mt-3.5 grid grid-cols-[74px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 border-t border-dashed border-line-2 pt-3 text-[13px]">
             <dt className="text-ink-3">Session</dt>
-            <dd className="m-0 font-mono" translate="no">{session?.id ?? "Not started"}</dd>
+            <dd className="m-0 font-mono" translate="no">{session.id}</dd>
             <dt className="text-ink-3">Courses</dt>
             <dd className="m-0">3 sample courses + your uploads</dd>
             <dt className="text-ink-3">Expires</dt>
