@@ -100,7 +100,7 @@ export function Sidebar({
 
 /**
  * "{Course} at a glance". It's for glancing, so Documents opens in place (a list of
- * this course's PDFs) and only "Manage in Library →" / "Open Dyno →" leave the page.
+ * this course's PDFs) and only "See the chapters in Library →" / "Open Dyno →" leave the page.
  */
 function GlanceCard({ course, glance }: { course: Course | undefined; glance: Glance | null }) {
   const [open, setOpen] = useState(false);
@@ -160,7 +160,7 @@ function GlanceCard({ course, glance }: { course: Course | undefined; glance: Gl
                   <p className="m-0 mb-1.5 mt-2 text-[13px]">
                     {/* Library opens on this same course. */}
                     <Link href={`/library?course=${encodeURIComponent(course?.id ?? "")}`} className="lnk-hl text-ink">
-                      {n ? "Manage in Library →" : "Add PDFs in Library →"}
+                      See the chapters in Library →
                     </Link>
                   </p>
                 </div>

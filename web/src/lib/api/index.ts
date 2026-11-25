@@ -8,7 +8,7 @@
 import * as mock from "./mock";
 import { chatGroup } from "../chat-group";
 import { REAL_DOCUMENTS } from "../real-documents";
-import type { Answer, ChatMessage, ChatRecord, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
+import type { Answer, ChatMessage, ChatRecord, ChatSummary, Course, DemoSession, DynoProgress, DynoRun } from "./types";
 
 export * from "./types";
 
@@ -39,9 +39,6 @@ const MOCK_CHATS = USE_MOCK && !REAL_CHATS;
  */
 export const REAL_ASK = REAL_CHATS && process.env.NEXT_PUBLIC_REAL_ASK === "true";
 
-/** Creating and editing your own courses arrives with Phase 5 (December). */
-const COURSES_READ_ONLY =
-  "Adding and editing your own courses is coming soon. The sample courses are ready to use.";
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
 
 export class ApiError extends Error {
@@ -101,62 +98,11 @@ export async function listCourses(): Promise<Course[]> {
   // Real courses, mocked documents (until visitor uploads)...
   const withDocs = USE_MOCK ? mock.withMockDocuments(courses) : courses;
   // ...except where answers are real: there, list what they really come from.
-  // (A delete in Library is still mocked, so it only hides the row in this tab.)
   if (!REAL_ASK) return withDocs;
   return withDocs.map((c) => {
     const real = REAL_DOCUMENTS[c.id];
-    return real ? { ...c, documents: real.filter((d) => !mock.isDeletedDoc(d.id)) } : c;
+    return real ? { ...c, documents: real } : c;
   });
-}
-
-/**
- * POST /courses/{id}/documents: upload one PDF. Progress is reported while the
- * server embeds it. Validation errors come back as ApiError 400/413/415.
- */
-export function uploadDocument(
-  courseId: string,
-  file: File,
-  onProgress?: (pct: number) => void,
-): Promise<CourseDocument> {
-  if (USE_MOCK) return mock.uploadDocument(courseId, file, onProgress);
-  const body = new FormData();
-  body.append("file", file);
-  return http(`/courses/${courseId}/documents`, { method: "POST", body });
-}
-
-/** POST /courses: make a course. The server enforces the limits too (10 courses, unique name). */
-export function createCourse(input: CourseInput): Promise<Course> {
-  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
-  return USE_MOCK ? mock.createCourse(input) : http("/courses", { method: "POST", body: JSON.stringify(input) });
-}
-
-/** PATCH /courses/{id}: rename, recolour, change term, archive or unarchive. */
-export function updateCourse(id: string, patch: Partial<CourseInput> & { archived?: boolean }): Promise<Course> {
-  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
-  return USE_MOCK ? mock.updateCourse(id, patch) : http(`/courses/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
-}
-
-/** DELETE /courses/{id}: the course, its PDFs and its chats. */
-export function deleteCourse(id: string): Promise<void> {
-  if (REAL_SESSIONS) return Promise.reject(new Error(COURSES_READ_ONLY));
-  return USE_MOCK ? mock.deleteCourse(id) : http(`/courses/${id}`, { method: "DELETE" });
-}
-
-/**
- * POST /courses/{id}/documents/{docId}/ocr: read a scanned PDF into text, then embed it.
- * Progress comes in two stages: "ocr" (reading page images) then "embed".
- */
-export function runOcr(
-  courseId: string,
-  documentId: string,
-  onProgress?: (pct: number, stage: "ocr" | "embed") => void,
-): Promise<CourseDocument> {
-  if (USE_MOCK) return mock.runOcr(courseId, documentId, onProgress);
-  return http(`/courses/${courseId}/documents/${documentId}/ocr`, { method: "POST" });
-}
-
-export function deleteDocument(courseId: string, documentId: string): Promise<void> {
-  return USE_MOCK ? mock.deleteDocument(courseId, documentId) : http(`/courses/${courseId}/documents/${documentId}`, { method: "DELETE" });
 }
 
 // ---------- Ask ----------

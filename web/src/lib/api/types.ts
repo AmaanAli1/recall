@@ -55,14 +55,6 @@ export interface Course {
   documents: CourseDocument[];
 }
 
-/** What the "New course" / "Edit course" dialog sends. */
-export interface CourseInput {
-  name: string;
-  code?: string;
-  term?: string;
-  color: CourseColor;
-}
-
 export interface Source {
   /** Citation number as shown in the answer: [1], [2], [3]. */
   n: number;

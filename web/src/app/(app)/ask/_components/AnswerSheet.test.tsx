@@ -198,18 +198,25 @@ describe("AnswerSheet: other states", () => {
   it("hides the starters on a course with no real documents, and says why", () => {
     render(<AnswerSheet {...base} view="empty" courseName="Networks" sampleOnly />);
     expect(screen.queryByRole("button", { name: /Dijkstra/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Only Algorithms has real documents/)).toBeInTheDocument();
+    expect(screen.getByText(/The demo’s course is Algorithms/)).toBeInTheDocument();
   });
 
   it("shows the starters when the course has real documents", () => {
     render(<AnswerSheet {...base} view="empty" />);
     expect(screen.getByRole("button", { name: /Dijkstra/ })).toBeInTheDocument();
-    expect(screen.queryByText(/Only Algorithms has real/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/The demo’s course is Algorithms/)).not.toBeInTheDocument();
+  });
+
+  it("a course with no documents says so, with no link to add PDFs (Algorithms-only demo)", () => {
+    render(<AnswerSheet {...base} view="empty" docCount={0} courseName="Old course" />);
+    expect(screen.getByRole("heading", { level: 1, name: "Old course has no documents yet." })).toBeInTheDocument();
+    expect(screen.getByText(/none are loaded here/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Add PDFs/ })).not.toBeInTheDocument();
   });
 
   it("opening a chat that fails offers Try again", () => {
     render(<AnswerSheet {...base} view="error" pendingQ="My chat" />);
-    expect(screen.getByRole("alert")).toHaveTextContent("Recall couldn’t reach your notes just now.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Recall couldn’t reach the course’s documents just now.");
     expect(screen.getByRole("heading", { level: 1, name: "My chat" })).toBeInTheDocument();
   });
 });

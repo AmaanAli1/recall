@@ -1,7 +1,7 @@
 /** Ask settings. Kept in the workspace for this visit; the API does not take them yet. */
 export interface Settings {
   length: "short" | "detailed";
-  /** Say "not in your notes" instead of guessing. */
+  /** Say "not in the book" instead of guessing. */
   strict: boolean;
   /** Show the embed/search/rerank/generate bar. */
   timing: boolean;

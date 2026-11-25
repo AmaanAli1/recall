@@ -10,56 +10,40 @@ import s from "../library.module.css";
 const ICON = {
   open: "M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
   ask: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
-  ocr: "M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M8 10h8 M8 14h5",
-  delete: "M4 7h16 M10 11v6 M14 11v6 M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12 M9 7V4h6v3",
 } as const;
 
 interface MenuItem {
   label: string;
   icon: keyof typeof ICON;
   run: () => void;
-  danger?: boolean;
-  /** Draw a separator above this item. */
-  sep?: boolean;
 }
 
 export interface DocumentRowProps {
   doc: CourseDocument;
   n: number;
   menuOpen: boolean;
-  confirming: boolean;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
-  onConfirmDelete: () => void;
-  onCancelDelete: () => void;
-  onDelete: () => void;
-  /** Navigate through the page's leave guard (menu items aren't links). */
+  /** Go to Ask (menu items aren't links). */
   onNavigate: (href: string) => void;
-  /** Read a scanned PDF into text (OCR), then embed it. */
-  onRunOcr: () => void;
   askHref: string;
-  /** False for the shared sample documents: nobody may delete those. */
-  canDelete: boolean;
 }
 
-/** One ledger line: margin number, dog-eared icon, status, and the actions menu. */
-export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onCloseMenu, onConfirmDelete, onCancelDelete, onDelete, onNavigate, onRunOcr, askHref, canDelete }: DocumentRowProps) {
+/**
+ * One ledger line: margin number, dog-eared icon, status, and the actions menu.
+ * Read-only since 2026-11-25 (Algorithms only): no upload progress, OCR or delete.
+ */
+export function DocumentRow({ doc, n, menuOpen, onToggleMenu, onCloseMenu, onNavigate, askHref }: DocumentRowProps) {
   const ready = doc.status === "ready";
-  const busy = doc.status === "embedding";
-  const failed = doc.status === "failed";
-  const pct = doc.progress ?? 0;
   const passages = doc.passages ?? "—";
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   // The sheet's dog-ear is a clip-path, which clips anything hanging outside it,
   // so the menu renders in a portal and is placed next to its button (flips up if needed).
-  const pos = useFloating(trigger, menu, menuOpen, confirming, -2);
+  const pos = useFloating(trigger, menu, menuOpen, false, -2);
 
-  // Only actions that really work (2026-11-23). Rename, re-embed, move and download
-  // need endpoints and come back with visitor uploads (December). Asking always
-  // searches the whole course, so the item says so.
+  // Only actions that really work. Asking always searches the whole course, so the item says so.
   const items: MenuItem[] = [];
-  if (failed) items.push({ label: "Run OCR", icon: "ocr", run: () => { onCloseMenu(); onRunOcr(); } });
   if (ready) items.push({ label: "Ask about this course", icon: "ask", run: () => { onCloseMenu(); onNavigate(askHref); } });
   const source = doc.sourceUrl;
   if (source) {
@@ -73,15 +57,12 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
       },
     });
   }
-  // Sample documents are shared by every visitor, so only your own can be deleted.
-  if (canDelete) items.push({ label: "Delete", icon: "delete", run: onConfirmDelete, danger: true, sep: items.length > 0 });
 
-  // Move focus into the menu when it opens (and to Cancel on the confirm step), per the ARIA menu pattern.
+  // Move focus into the menu when it opens, per the ARIA menu pattern.
   useEffect(() => {
     if (!menuOpen) return;
-    const first = menu.current?.querySelector<HTMLElement>(confirming ? "[data-cancel]" : '[role="menuitem"]');
-    first?.focus();
-  }, [menuOpen, confirming]);
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [menuOpen]);
 
   const onMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
@@ -105,7 +86,7 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
   };
 
   return (
-    <tr className={`${s.row} ${failed ? s.failed : ""} ${menuOpen ? s.on : ""} border-t border-rule`}>
+    <tr className={`${s.row} ${menuOpen ? s.on : ""} border-t border-rule`}>
       <th scope="row" className="relative py-4 pl-0 pr-3 text-left font-normal">
         <span aria-hidden="true" className={`${s.rowN} absolute -left-[44px] top-[18px] w-[26px] sm:-left-[52px] sm:w-[30px] text-right font-mono text-xs`}>
           {n}.
@@ -131,36 +112,6 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
             Ready
           </span>
         )}
-        {busy && (
-          <span className="flex flex-col gap-[7px]">
-            <span className="text-sm">
-              {doc.stage === "ocr" ? "Reading scanned pages (OCR)…" : "Embedding passages…"} <span className="font-mono">{pct}%</span>
-            </span>
-            <span
-              role="progressbar"
-              aria-label={`${doc.stage === "ocr" ? "Running OCR on" : "Embedding"} ${doc.name}`}
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="block h-[3px] overflow-hidden bg-line"
-            >
-              <span className="block h-full w-full origin-left bg-red" style={{ transform: `scaleX(${pct / 100})` }} />
-            </span>
-          </span>
-        )}
-        {failed && (
-          <span className="flex flex-col gap-[3px]">
-            <span className="inline-flex items-center gap-2 text-sm font-medium text-bad">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 8v5" />
-                <path d="M12 16.5v.5" />
-              </svg>
-              No text found
-            </span>
-            <span className="text-[13px] text-ink-2">This PDF is a scan. Run OCR to make it searchable.</span>
-          </span>
-        )}
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-ink-2">{doc.added}</td>
       <td data-menu-root="" className="relative whitespace-nowrap py-4 pl-3 pr-0 text-right">
@@ -177,16 +128,6 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
                 <path d="M13 6l6 6-6 6" />
               </svg>
             </Link>
-          )}
-          {failed && (
-            <button
-              type="button"
-              onClick={onRunOcr}
-              aria-label={`Run OCR on ${doc.name}`}
-              className="btn btn-red min-h-9 rounded border-0 px-3 py-[7px] text-[13px] font-medium"
-            >
-              Run OCR
-            </button>
           )}
           <button
             ref={trigger}
@@ -214,39 +155,14 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
             style={pos.style}
             className={`${s.menu} z-40 box-border w-[248px] whitespace-normal rounded-md border border-line-2 bg-sheet p-1.5 text-left shadow-[0_2px_3px_rgba(70,45,20,0.08),0_18px_36px_-12px_rgba(70,45,20,0.32)]`}
           >
-            {confirming ? (
-              <div className="px-2 pb-1.5 pt-2">
-                <p className="m-0 text-[13px] leading-[1.45]">
-                  Delete{" "}
-                  <strong translate="no" className="break-all font-semibold">
-                    {doc.name}
-                  </strong>
-                  ? {doc.passages != null ? `Recall forgets its ${doc.passages} passages too.` : "Recall forgets it too."}
-                </p>
-                <div className="mt-2.5 flex gap-1.5">
-                  <button type="button" onClick={onDelete} className="btn btn-red min-h-[34px] rounded border-0 px-3 py-1.5 text-[13px] font-medium">
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    data-cancel=""
-                    onClick={onCancelDelete}
-                    className="btn btn-ghost min-h-[34px] rounded bg-paper! px-3 py-1.5 text-[13px]"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              items.map((it) => (
+            {items.map((it) => (
                 <Fragment key={it.label}>
-                  {it.sep && <div role="separator" className="mx-1 my-1.5 h-px bg-line" />}
                   <button
                     type="button"
                     role="menuitem"
                     tabIndex={-1}
                     onClick={it.run}
-                    className={`${s.mi} ${it.danger ? s.miDanger : ""} flex min-h-9 w-full items-center gap-2.5 rounded border-0 bg-transparent px-2.5 py-2 text-left text-sm`}
+                    className={`${s.mi} flex min-h-9 w-full items-center gap-2.5 rounded border-0 bg-transparent px-2.5 py-2 text-left text-sm`}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d={ICON[it.icon]} />
@@ -254,8 +170,7 @@ export function DocumentRow({ doc, n, menuOpen, confirming, onToggleMenu, onClos
                     <span className="flex-auto">{it.label}</span>
                   </button>
                 </Fragment>
-              ))
-            )}
+              ))}
           </div>,
           document.body,
         )}

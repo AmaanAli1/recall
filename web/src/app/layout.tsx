@@ -25,7 +25,7 @@ const fragment = localFont({
 export const metadata: Metadata = {
   title: { default: "Recall", template: "%s · Recall" },
   description:
-    "Recall reads your lecture PDFs, scores every passage against your question, and shows the exact page each answer came from.",
+    "Recall reads a real textbook, scores every passage against your question, and shows the exact page each answer came from.",
 };
 
 export const viewport: Viewport = { themeColor: "#F3EFE6" };

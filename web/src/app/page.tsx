@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BackToTop } from "@/components/BackToTop";
 import { Grain } from "@/components/Grain";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AboutDemo } from "./_landing/AboutDemo";
 import { DynoBench } from "./_landing/DynoBench";
 import { Hero } from "./_landing/Hero";
 import { LandingRoot } from "./_landing/LandingRoot";
@@ -25,6 +26,7 @@ export default function Home() {
         <Pipeline />
         <SpecSheet />
         <DynoBench />
+        <AboutDemo />
       </main>
       <SiteFooter onLanding />
       <BackToTop />

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("landing page", () => {
   test("hero headline renders and Try the demo goes to /demo @mobile", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Ask your notes");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Ask the textbook");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("cited");
     // No horizontal scrollbar, even at phone width (the pipeline scales to fit).
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

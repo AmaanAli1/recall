@@ -70,7 +70,7 @@ export function Composer({
       <p className="mt-2.5 text-[13px] text-ink-2">
         {sample ? `Using the sample ${courseName} course.` : `Using your ${courseName} course.`}{" "}
         <Link href="/library" className="lnk lnk-hl text-ink">
-          Add your own PDFs in Library →
+          See its chapters in Library →
         </Link>
       </p>
       {credit && <CreditLine className="mt-1" />}

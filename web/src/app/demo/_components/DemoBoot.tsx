@@ -78,7 +78,7 @@ export function DemoBoot() {
         {state.issued ? "Your demo notebook is ready." : "Preparing your demo session…"}
       </h1>
       <p className="m-0 mb-8 text-center text-[15px] text-ink-2">
-        Your chats and uploads stay in this session. Other visitors can’t see them.
+        Your chats stay in this session. Other visitors can’t see them.
       </p>
 
       <LibraryCard state={state} onRetry={retry} />

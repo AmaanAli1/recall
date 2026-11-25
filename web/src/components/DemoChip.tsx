@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { endDemoSession, getDemoSession, type DemoSession } from "@/lib/api";
@@ -103,16 +104,21 @@ export function DemoChip() {
         <div className="pop-card">
           <p id="demo-pop-h" className="m-0 text-[15px] font-semibold">Your demo session</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">
-            Your chats and uploads are saved for 24 hours after your last visit. Nobody else can see them.
+            Your chats are saved for 24 hours after your last visit. Nobody else can see them.
           </p>
           <dl className="num mt-3.5 grid grid-cols-[74px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 border-t border-dashed border-line-2 pt-3 text-[13px]">
             <dt className="text-ink-3">Session</dt>
             <dd className="m-0 font-mono" translate="no">{session.id}</dd>
-            <dt className="text-ink-3">Courses</dt>
-            <dd className="m-0">1 sample course + 1 of your own</dd>
+            <dt className="text-ink-3">Course</dt>
+            <dd className="m-0">Algorithms (shared, read-only)</dd>
             <dt className="text-ink-3">Expires</dt>
             <dd className="m-0">24 h after your last visit</dd>
           </dl>
+          <p className="m-0 mt-3 text-[13px]">
+            <Link href="/#about-this-demo" className="lnk-hl text-ink" onClick={close}>
+              About this demo →
+            </Link>
+          </p>
           {!confirming ? (
             <div className="mt-4 flex justify-between gap-2">
               <button type="button" className="ghost-sm" onClick={() => setConfirming(true)}>
@@ -124,7 +130,7 @@ export function DemoChip() {
             </div>
           ) : (
             <div role="group" aria-label="Confirm starting fresh" className="mt-4 rounded bg-[#fbefea] p-3 shadow-[0_0_0_1px_rgba(200,37,14,0.45)]">
-              <p className="m-0 text-[13px] leading-normal">Start fresh? This deletes the chats and uploads in this session.</p>
+              <p className="m-0 text-[13px] leading-normal">Start fresh? This deletes the chats in this session.</p>
               <div className="mt-2.5 flex gap-2">
                 <button type="button" autoFocus className="btn btn-red rounded px-3 py-[7px] text-[13px] font-medium" onClick={startFresh}>
                   Delete and restart
