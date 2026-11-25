@@ -29,12 +29,12 @@ test.describe("ask", () => {
 
   test("clicking citation [2] presses it and highlights its source", async ({ page }) => {
     await page.goto("/ask");
-    const chip = page.getByRole("button", { name: "Show source 2, Week6_DP.pdf page 11" });
+    const chip = page.getByRole("button", { name: "Show source 2, Erickson_Ch3_DynamicProgramming.pdf page 11" });
     await expect(chip).toHaveAttribute("aria-pressed", "false");
     await chip.click();
     await expect(chip).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Show source 1, Week6_DP.pdf page 4" })).toHaveAttribute("aria-pressed", "false");
-    const card = sources(page).getByRole("button", { name: /^\[2\] Week6_DP\.pdf/ });
+    await expect(page.getByRole("button", { name: "Show source 1, Erickson_Ch3_DynamicProgramming.pdf page 4" })).toHaveAttribute("aria-pressed", "false");
+    const card = sources(page).getByRole("button", { name: /^\[2\] Erickson_Ch3_DynamicProgramming\.pdf/ });
     await expect(card).toHaveAttribute("aria-pressed", "true");
     await expect(card.locator("mark")).toHaveText("sorting by value/weight and taking items greedily fails");
   });
@@ -43,17 +43,17 @@ test.describe("ask", () => {
     await freshArrival(page);
     await page.goto("/ask");
     await page.getByRole("button", { name: "Why does Dijkstra fail with negative edges?" }).click();
-    await expect(sources(page).getByText("Week3_GraphSearch.pdf").first()).toBeVisible();
+    await expect(sources(page).getByText("Erickson_Ch8_ShortestPaths.pdf").first()).toBeVisible();
     const box = page.getByRole("textbox", { name: "Ask about Algorithms" });
     await box.fill("When does dynamic programming beat a greedy approach?");
     await box.press("Enter");
     await expect(sources(page).getByText("For: When does dynamic programming beat a greedy approach?")).toBeVisible();
-    await expect(sources(page).getByText("Week3_GraphSearch.pdf")).toHaveCount(0);
+    await expect(sources(page).getByText("Erickson_Ch8_ShortestPaths.pdf")).toHaveCount(0);
 
     const first = page.getByRole("region", { name: "Answer to Why does Dijkstra fail with negative edges?" });
     await first.getByRole("button", { name: /^Show source 2/ }).click();
     await expect(sources(page).getByText("For: Why does Dijkstra fail with negative edges?")).toBeVisible();
-    await expect(sources(page).getByRole("button", { name: /^\[2\] Week3_GraphSearch\.pdf/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(sources(page).getByRole("button", { name: /^\[2\] Erickson_Ch8_ShortestPaths\.pdf/ })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("deleting a chat asks first, and Undo restores it", async ({ page }) => {
@@ -200,7 +200,7 @@ test.describe("ask", () => {
     await expect(docs).toHaveAttribute("aria-expanded", "false");
     await docs.click();
     await expect(docs).toHaveAttribute("aria-expanded", "true");
-    await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(6);
+    await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(4);
     await expect(page).toHaveURL(/\/ask$/);
     await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
     // The glance card shows the real Dyno run 1 (the committed baseline).

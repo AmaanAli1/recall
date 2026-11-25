@@ -1,7 +1,12 @@
 /**
  * Sample data for the mocked API. It mirrors the 2 sample courses that every
  * demo session ships with (Algorithms, Everyday Math).
+ *
+ * The canned answers below are mock-mode only (local runs and CI, never the
+ * Preview or Production): their excerpts are written for the tests, not
+ * quoted from the book, even though they name Erickson's chapter files.
  */
+import { REAL_DOCUMENTS } from "../real-documents";
 import { SAMPLE_COURSE_IDS } from "../sample-courses";
 import type { Answer, ChatSummary, Course, DynoRun, RunConfig } from "./types";
 
@@ -11,14 +16,9 @@ export const COURSES: Course[] = [
     name: "Algorithms",
     color: "blue",
     sample: true,
-    documents: [
-      { id: "algo-6", name: "Week6_DynamicProgramming.pdf", pages: 32, passages: 118, status: "ready", added: "Oct 2" },
-      { id: "algo-5", name: "Week5_GreedyAlgorithms.pdf", pages: 28, passages: 101, status: "ready", added: "Sep 25" },
-      { id: "algo-4", name: "Week4_DivideAndConquer.pdf", pages: 30, passages: 109, status: "ready", added: "Sep 18" },
-      { id: "algo-3", name: "Week3_GraphSearch.pdf", pages: 41, passages: 152, status: "ready", added: "Sep 11" },
-      { id: "algo-clrs", name: "CLRS_Ch15_Reading.pdf", pages: 64, passages: null, status: "embedding", progress: 62, added: "Today" },
-      { id: "algo-mid", name: "Midterm_Review_Scan.pdf", pages: 12, passages: null, status: "failed", added: "Today", error: "No text layer. Run OCR first." },
-    ],
+    // The same 4 Erickson chapters the real site lists (lib/real-documents.ts),
+    // so local runs and CI show what the Preview and Production show.
+    documents: REAL_DOCUMENTS[SAMPLE_COURSE_IDS.algorithms].map((d) => ({ ...d })),
   },
   // Its PDFs (OpenStax Prealgebra 2e chapters) arrive with the next data load;
   // until then it has none, so Ask says "not found" and offers no starters.
@@ -63,13 +63,13 @@ export const ANSWERS: Record<string, Answer> = {
       "Greedy still wins when the greedy-choice property holds, as in fractional knapsack",
     ],
     sources: [
-      { n: 1, file: "Week6_DP.pdf", page: 4, score: 0.82, pre: "Greedy algorithms commit to the locally best choice. ", hit: "When that choice can rule out the optimal solution, we must consider every subproblem", post: "…" },
-      { n: 2, file: "Week6_DP.pdf", page: 11, score: 0.77, pre: "0/1 knapsack: ", hit: "sorting by value/weight and taking items greedily fails", post: " on W = 50 with items (60,10), (100,20), (120,30)…" },
-      { n: 3, file: "Week5_Greedy.pdf", page: 18, score: 0.71, pre: "Fractional knapsack ", hit: "has the greedy-choice property", post: ": taking the highest value-per-weight item first is always safe…" },
+      { n: 1, file: "Erickson_Ch3_DynamicProgramming.pdf", page: 4, score: 0.82, pre: "Greedy algorithms commit to the locally best choice. ", hit: "When that choice can rule out the optimal solution, we must consider every subproblem", post: "…" },
+      { n: 2, file: "Erickson_Ch3_DynamicProgramming.pdf", page: 11, score: 0.77, pre: "0/1 knapsack: ", hit: "sorting by value/weight and taking items greedily fails", post: " on W = 50 with items (60,10), (100,20), (120,30)…" },
+      { n: 3, file: "Erickson_Ch4_GreedyAlgorithms.pdf", page: 18, score: 0.71, pre: "Fractional knapsack ", hit: "has the greedy-choice property", post: ": taking the highest value-per-weight item first is always safe…" },
     ],
     dropped: [
-      { file: "Week5_Greedy.pdf", page: 22, score: 0.41 },
-      { file: "Week4_DivideConquer.pdf", page: 9, score: 0.33 },
+      { file: "Erickson_Ch4_GreedyAlgorithms.pdf", page: 22, score: 0.41 },
+      { file: "Erickson_Ch1_Recursion.pdf", page: 9, score: 0.33 },
     ],
     timing: { embed: 0.1, search: 0.3, rerank: 0.6, generate: 0.4 },
     followUps: ["Walk me through the knapsack table", "Quiz me on this"],
@@ -83,11 +83,11 @@ export const ANSWERS: Record<string, Answer> = {
       "Use Bellman-Ford instead, which relaxes every edge |V| − 1 times and also detects negative cycles",
     ],
     sources: [
-      { n: 1, file: "Week3_GraphSearch.pdf", page: 27, score: 0.84, pre: "Extract-Min returns u; ", hit: "once a vertex is extracted, its distance is final", post: " because all edge weights are non-negative…" },
-      { n: 2, file: "Week3_GraphSearch.pdf", page: 29, score: 0.79, pre: "Counterexample: ", hit: "with a negative edge, an already-finalized vertex can be improved later", post: ", so the invariant fails…" },
-      { n: 3, file: "Week3_GraphSearch.pdf", page: 33, score: 0.73, pre: "Bellman-Ford ", hit: "relaxes all edges |V| − 1 times", post: ", then one more pass to detect a negative cycle…" },
+      { n: 1, file: "Erickson_Ch8_ShortestPaths.pdf", page: 27, score: 0.84, pre: "Extract-Min returns u; ", hit: "once a vertex is extracted, its distance is final", post: " because all edge weights are non-negative…" },
+      { n: 2, file: "Erickson_Ch8_ShortestPaths.pdf", page: 29, score: 0.79, pre: "Counterexample: ", hit: "with a negative edge, an already-finalized vertex can be improved later", post: ", so the invariant fails…" },
+      { n: 3, file: "Erickson_Ch8_ShortestPaths.pdf", page: 33, score: 0.73, pre: "Bellman-Ford ", hit: "relaxes all edges |V| − 1 times", post: ", then one more pass to detect a negative cycle…" },
     ],
-    dropped: [{ file: "Week4_DivideConquer.pdf", page: 21, score: 0.38 }],
+    dropped: [{ file: "Erickson_Ch1_Recursion.pdf", page: 21, score: 0.38 }],
     timing: { embed: 0.1, search: 0.3, rerank: 0.5, generate: 0.4 },
     followUps: ["Show me a counterexample graph", "Quiz me on this"],
   },
@@ -100,13 +100,13 @@ export const ANSWERS: Record<string, Answer> = {
       "The recursion tree says the same thing: log n levels, each doing Θ(n) work in total",
     ],
     sources: [
-      { n: 1, file: "Week4_DivideConquer.pdf", page: 6, score: 0.86, pre: "Merge sort: divide, conquer, combine. ", hit: "T(n) = 2T(n/2) + Θ(n)", post: " for n > 1…" },
-      { n: 2, file: "Week4_DivideConquer.pdf", page: 14, score: 0.8, pre: "Master theorem, case 2: ", hit: "if f(n) = Θ(n^(log_b a)), then T(n) = Θ(n^(log_b a) · log n)", post: "…" },
-      { n: 3, file: "Week4_DivideConquer.pdf", page: 9, score: 0.72, pre: "Recursion tree: ", hit: "each of the log n levels costs cn", post: ", for a total of cn log n…" },
+      { n: 1, file: "Erickson_Ch1_Recursion.pdf", page: 6, score: 0.86, pre: "Merge sort: divide, conquer, combine. ", hit: "T(n) = 2T(n/2) + Θ(n)", post: " for n > 1…" },
+      { n: 2, file: "Erickson_Ch1_Recursion.pdf", page: 14, score: 0.8, pre: "Master theorem, case 2: ", hit: "if f(n) = Θ(n^(log_b a)), then T(n) = Θ(n^(log_b a) · log n)", post: "…" },
+      { n: 3, file: "Erickson_Ch1_Recursion.pdf", page: 9, score: 0.72, pre: "Recursion tree: ", hit: "each of the log n levels costs cn", post: ", for a total of cn log n…" },
     ],
     dropped: [
-      { file: "Week6_DP.pdf", page: 2, score: 0.4 },
-      { file: "Week3_GraphSearch.pdf", page: 4, score: 0.31 },
+      { file: "Erickson_Ch3_DynamicProgramming.pdf", page: 2, score: 0.4 },
+      { file: "Erickson_Ch8_ShortestPaths.pdf", page: 4, score: 0.31 },
     ],
     timing: { embed: 0.1, search: 0.2, rerank: 0.5, generate: 0.4 },
     followUps: ["Draw the recursion tree", "Quiz me on this"],
