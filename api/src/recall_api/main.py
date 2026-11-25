@@ -8,6 +8,7 @@ POST /v1/answer, step by step:
   2. Which visitor? (their Supabase token)
   3. Not too many questions this minute? (rate limit)
   4. Budget left? (demo_sessions, read as the visitor)
+  4b. A follow-up? Rewrite it to stand alone -> timing.rewrite
   5. Embed the question            -> timing.embed
   6. match_chunks() (RLS applies)  -> timing.search
   7. Best match too weak? -> "not found", no answer model
@@ -40,6 +41,7 @@ from recall_api.answer import (
 from recall_api.db import DbAuthError, DbError, SupabaseClient
 from recall_api.ingest.embed import embed_texts, make_client
 from recall_api.ratelimit import RateLimiter
+from recall_api.rewrite import Turn, rewrite_question
 from recall_api.settings import Settings, get_settings
 
 log = logging.getLogger("recall_api")
@@ -138,6 +140,10 @@ class AskBody(BaseModel):
 
     courseId: UUID  # a malformed id is a 422 before any work
     question: str = Field(min_length=1, max_length=2000)
+    # Earlier turns of this chat, oldest first, loaded by the
+    # Next.js server from the database (never from the browser).
+    # Empty for the first question in a chat.
+    history: list[Turn] = Field(default_factory=list, max_length=10)
 
 
 class Usage(BaseModel):
@@ -200,12 +206,27 @@ def answer(
             raise HTTPException(status_code=429, detail=BUDGET_SPENT)
 
         timing = Timing()
+        tokens = 0
+
+        # 4b. A follow-up ("why does that fail?") is rewritten
+        #     into a question that stands alone, for search and
+        #     for the answer model. None = keep the original.
+        query = body.question
+        if body.history:
+            start = time.perf_counter()
+            rewritten, used = rewrite_question(
+                ai, settings.openai_answer_model, body.history, body.question
+            )
+            timing.rewrite = _seconds(start)
+            tokens += used
+            if rewritten:
+                query = rewritten
 
         # 5. Embed the question.
         start = time.perf_counter()
-        embedded = embed_texts(ai, [body.question])
+        embedded = embed_texts(ai, [query])
         timing.embed = _seconds(start)
-        tokens = embedded.tokens
+        tokens += embedded.tokens
 
         # 6. Retrieve, as the visitor: someone else's course
         #    simply returns no rows.
@@ -223,7 +244,7 @@ def answer(
                 response = ai.responses.parse(
                     model=settings.openai_answer_model,
                     instructions=SYSTEM_PROMPT,
-                    input=build_input(body.question, retrieved[:MAX_PASSAGES]),
+                    input=build_input(query, retrieved[:MAX_PASSAGES]),
                     text_format=ModelAnswer,
                     max_output_tokens=MAX_OUTPUT_TOKENS,
                     # GPT-5.4 mini's default, written out: no hidden
@@ -243,6 +264,10 @@ def answer(
                 raise HTTPException(status_code=502, detail=UPSTREAM_DOWN)
             # 9. Map to the frontend's Answer.
             result = to_answer(body.question, course_id, response.output_parsed, retrieved, timing)
+        # The visitor's own words stay the question; the
+        # rewrite is shown alongside, only when there was one.
+        if query != body.question:
+            result.searchedFor = query
     except DbAuthError as exc:
         log.info("Rejected token: %s", exc)
         raise HTTPException(status_code=401, detail=SESSION_EXPIRED) from exc

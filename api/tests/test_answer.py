@@ -182,4 +182,4 @@ def test_answer_json_matches_the_frontend_field_names():
         "followUps",
     }
     assert set(data["sources"][0]) == {"n", "file", "page", "score", "pre", "hit", "post"}
-    assert set(data["timing"]) == {"embed", "search", "rerank", "generate"}
+    assert set(data["timing"]) == {"rewrite", "embed", "search", "rerank", "generate"}

@@ -134,6 +134,7 @@ class Dropped(BaseModel):
 
 
 class Timing(BaseModel):
+    rewrite: float = 0.0  # follow-ups only (rewrite.py)
     embed: float = 0.0
     search: float = 0.0
     rerank: float = 0.0  # no reranker in v1
@@ -151,6 +152,9 @@ class Answer(BaseModel):
     # Only present (true) when nothing in the course answers
     # the question; left out of the JSON otherwise.
     notFound: bool | None = None
+    # Only present when a follow-up was rewritten: what search
+    # actually used, so the UI can show it ("Searched for: …").
+    searchedFor: str | None = None
 
 
 def _score(similarity: float) -> float:

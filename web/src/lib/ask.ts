@@ -34,6 +34,35 @@ export function parseAsk(body: unknown): Parsed<AskRequest> {
   return { ok: true, value: { courseId, question: q, ...(isUuid(chatId) ? { chatId } : {}) } };
 }
 
+/** One earlier exchange in a chat, as FastAPI's `history` expects it (rewrite.py's Turn). */
+export interface Turn {
+  question: string;
+  answer: string;
+}
+
+/**
+ * How many saved messages a follow-up loads: 3 question/answer pairs.
+ * FastAPI only shows the rewriter the last 3 turns anyway (MAX_HISTORY_TURNS).
+ */
+export const HISTORY_MESSAGES = 6;
+
+/**
+ * Saved messages (newest first, as the route loads them) → turns, oldest
+ * first. A question only counts with the answer saved right after it, so a
+ * question whose answer never got saved is skipped rather than sent half.
+ */
+export function toHistory(rows: { role: string; content: string }[]): Turn[] {
+  const oldestFirst = [...rows].reverse();
+  const turns: Turn[] = [];
+  // Each question with the message right after it, if that's its answer.
+  // (An answer can't start a pair, so nothing is used twice.)
+  for (let i = 0; i + 1 < oldestFirst.length; i++) {
+    const [q, a] = [oldestFirst[i], oldestFirst[i + 1]];
+    if (q.role === "user" && a.role === "assistant") turns.push({ question: q.content, answer: a.content });
+  }
+  return turns;
+}
+
 /** Shown (and saved) when the course's documents don't answer the question. */
 export const NOT_FOUND_TEXT = "I couldn't find this in this course's documents.";
 

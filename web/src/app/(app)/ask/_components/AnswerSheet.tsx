@@ -271,7 +271,7 @@ function AnswerBody({
 }: Parameters<typeof TurnBlock>[0] & { answer: Answer }) {
   const active = turn.key === activeKey;
   const t = answer.timing;
-  const total = t.embed + t.search + t.rerank + t.generate;
+  const total = (t.rewrite ?? 0) + t.embed + t.search + t.rerank + t.generate;
   const meta = `${turn.fresh ? "Asked just now · " : ""}${courseName} · searched ${docCount ?? answer.sources.length} documents in ${fmtS(total)}`;
   const lbl = (n: number) => {
     const src = answer.sources.find((x) => x.n === n);
@@ -294,6 +294,12 @@ function AnswerBody({
   return (
     <div className={turn.fresh ? s.ansIn : ""}>
       <p className="num m-0 text-[13px] leading-9 text-ink-2">{meta}</p>
+      {/* A follow-up like "why does that fail?" is rewritten before search; show what was searched. */}
+      {answer.searchedFor && (
+        <p className="m-0 -mt-1.5 mb-1 text-[13px] leading-snug text-ink-2">
+          Searched for <q className="text-ink">{answer.searchedFor}</q>
+        </p>
+      )}
 
       <TimingBar timing={t} hidden={!showTiming} />
 
@@ -376,6 +382,7 @@ function AnswerBody({
 }
 
 const STEPS = [
+  { key: "rewrite", color: "var(--ink-3)" },
   { key: "embed", color: "var(--line-2)" },
   { key: "search", color: "var(--ink-3)" },
   { key: "rerank", color: "var(--red)" },
@@ -386,21 +393,23 @@ const STEPS = [
 function TimingBar({ timing, hidden }: { timing: Answer["timing"]; hidden: boolean }) {
   // Steps that took no time (no reranker yet; no model call for "not found")
   // are left out: a 0-wide segment's label would sit on top of its neighbours.
-  const steps = STEPS.filter((st) => timing[st.key] > 0);
-  const total = steps.reduce((n, st) => n + timing[st.key], 0) || 1;
+  // (`rewrite` is missing from answers saved before query rewriting: 0 too.)
+  const sec = (key: (typeof STEPS)[number]["key"]) => timing[key] ?? 0;
+  const steps = STEPS.filter((st) => sec(st.key) > 0);
+  const total = steps.reduce((n, st) => n + sec(st.key), 0) || 1;
   return (
     <div role="group" aria-label="Time spent per step" className={`mt-2 ${hidden ? s.timingOff : ""}`}>
       <div className="flex h-1 gap-0.5">
         {steps.map((st) => (
           // Shares of the total, not raw seconds: flex-grow values that add up
           // to less than 1 (a 0.5 s answer) would leave part of the bar empty.
-          <span key={st.key} className="block" style={{ flex: `${timing[st.key] / total} 1 0%`, background: st.color }} />
+          <span key={st.key} className="block" style={{ flex: `${sec(st.key) / total} 1 0%`, background: st.color }} />
         ))}
       </div>
       <div className="num mt-1.5 flex gap-0.5 font-mono text-xs leading-[26px] text-ink-2">
         {steps.map((st, i) => {
           // Too narrow a segment can't fit its time, so it shows just the step name.
-          const share = timing[st.key] / total;
+          const share = sec(st.key) / total;
           // Under a fifth of the bar there's room for the name only; under a
           // tenth, not even that (embed 0.1 s of 1.3 s), so the label stays
           // for screen readers only instead of being cut to "embec".
@@ -415,7 +424,7 @@ function TimingBar({ timing, hidden }: { timing: Answer["timing"]; hidden: boole
             >
               <span className={sliver ? "sr-only" : ""}>
                 {st.key}
-                {!narrow && <>&nbsp;{fmtS(timing[st.key])}</>}
+                {!narrow && <>&nbsp;{fmtS(sec(st.key))}</>}
               </span>
             </span>
           );
