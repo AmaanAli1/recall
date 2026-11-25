@@ -4,7 +4,7 @@
  * The demo session is kept in localStorage here; the real one is an httpOnly cookie.
  */
 import { ANSWERS, CHATS, COURSE_STARTERS, COURSES, DYNO_RUNS, NEXT_RUN } from "./mock-data";
-import { cleanCode, cleanName, COURSE_LIMIT, COURSE_LIMIT_MESSAGE, courseNameError, ownCourseCount } from "../courses";
+import { cleanCode, cleanName, COURSE_LIMIT, COURSE_LIMIT_MESSAGE, courseNameError, ownCourseCount, SAMPLE_LOCKED_MESSAGE } from "../courses";
 import type { Answer, ChatMessage, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
 
 const SESSION_KEY = "recall-demo";
@@ -117,6 +117,7 @@ export async function updateCourse(id: string, patch: Partial<CourseInput> & { a
   await wait(100);
   const cur = courses.find((c) => c.id === id);
   if (!cur) throw new Error("That course no longer exists.");
+  if (cur.sample) throw new Error(SAMPLE_LOCKED_MESSAGE); // the database refuses this too
   if (patch.name !== undefined) checkInput({ name: patch.name, color: cur.color }, id);
   const next: Course = {
     ...cur,
@@ -131,6 +132,7 @@ export async function updateCourse(id: string, patch: Partial<CourseInput> & { a
 }
 
 export async function deleteCourse(id: string): Promise<void> {
+  if (courses.find((c) => c.id === id)?.sample) throw new Error(SAMPLE_LOCKED_MESSAGE);
   courses = courses.filter((c) => c.id !== id);
 }
 
@@ -151,6 +153,8 @@ export async function runOcr(courseId: string, documentId: string, onProgress?: 
 }
 
 export async function uploadDocument(courseId: string, file: File, onProgress?: (pct: number) => void): Promise<CourseDocument> {
+  // Like the database: visitors can't add documents to a sample course.
+  if (courses.find((c) => c.id === courseId)?.sample) throw new Error(SAMPLE_LOCKED_MESSAGE);
   let pct = 0;
   while (pct < 100) {
     await wait(160);

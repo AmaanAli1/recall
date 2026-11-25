@@ -12,6 +12,18 @@ async function openLibrary(page: Page) {
 /** The hidden file input inside the drop zone (labelled by the current course). */
 const fileInput = (page: Page) => page.getByLabel(/Upload PDFs to/);
 
+/** A PDF just over the demo's 25 MB limit (the browser checks file.size). */
+const BIG_PDF = { name: "Week6_Full_Lecture.pdf", mimeType: "application/pdf", buffer: Buffer.alloc(25 * 1024 * 1024 + 1) };
+
+/** Sample courses can't be changed or take uploads, so those tests use a course of your own. */
+async function makeOwnCourse(page: Page, name: string) {
+  await page.getByRole("button", { name: "New course" }).click();
+  const dialog = page.getByRole("dialog", { name: "New course" });
+  await dialog.getByRole("textbox", { name: "Course name" }).fill(name);
+  await dialog.getByRole("button", { name: "Create course" }).click();
+  await expect(page.getByRole("tab", { name: new RegExp(name) })).toHaveAttribute("aria-selected", "true");
+}
+
 test.describe("library", () => {
   test("tabs switch courses and show counts", async ({ page }) => {
     await openLibrary(page);
@@ -33,6 +45,7 @@ test.describe("library", () => {
 
   test("a .pptx shows the PDFs-only slip, and Got it dismisses it", async ({ page }) => {
     await openLibrary(page);
+    await makeOwnCourse(page, "My notes"); // sample courses take no uploads
     await fileInput(page).setInputFiles([
       file("Lecture7_Slides.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     ]);
@@ -47,16 +60,19 @@ test.describe("library", () => {
 
   test("choosing a PDF adds a row that reaches Ready @mobile", async ({ page }) => {
     await openLibrary(page);
+    await makeOwnCourse(page, "My notes"); // sample courses take no uploads
+    await expect(page.getByText("Drop lecture PDFs into My notes")).toBeVisible();
     await fileInput(page).setInputFiles([PDF]);
     const row = page.getByRole("row", { name: /Week7_Graphs\.pdf/ });
     await expect(row).toContainText("Embedding passages…");
     await expect(row.getByRole("progressbar", { name: "Embedding Week7_Graphs.pdf" })).toBeAttached();
     await expect(row).toContainText("Ready", { timeout: 15_000 });
-    await expect(page.getByRole("tab", { name: /Algorithms/ })).toContainText("[7]");
+    await expect(page.getByRole("tab", { name: /My notes/ })).toContainText("[1]");
   });
 
   test("a mixed choose adds the PDF and skips the rest", async ({ page }) => {
     await openLibrary(page);
+    await makeOwnCourse(page, "My notes"); // sample courses take no uploads
     await fileInput(page).setInputFiles([PDF, file("whiteboard_photo.png", "image/png")]);
     const slip = page.getByRole("alert").filter({ hasText: "Added 1 PDF. Skipped 1 file." });
     await expect(slip).toBeVisible();
@@ -104,6 +120,7 @@ test.describe("library", () => {
 
   test("leaving mid-upload asks first, and Stay keeps you on the page", async ({ page }) => {
     await openLibrary(page);
+    await makeOwnCourse(page, "My notes"); // sample courses take no uploads
     await fileInput(page).setInputFiles([PDF]);
     await expect(page.getByRole("row", { name: /Week7_Graphs\.pdf/ })).toContainText("Embedding passages…");
 
@@ -184,29 +201,109 @@ test.describe("library", () => {
 
   test("archive hides a course behind the Archived toggle, and Unarchive brings it back", async ({ page }) => {
     await openLibrary(page);
-    await page.getByRole("tab", { name: /Everyday Math/ }).click();
-    await page.getByRole("button", { name: "Options for Everyday Math" }).click();
+    await makeOwnCourse(page, "Networks");
+    await page.getByRole("button", { name: "Options for Networks" }).click();
     await page.getByRole("menuitem", { name: /^Archive/ }).click();
-    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /Networks/ })).toHaveCount(0);
 
     const toggle = page.getByRole("button", { name: /^Archived/ });
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("tab", { name: /Everyday Math/ }).click();
+    await page.getByRole("tab", { name: /Networks/ }).click();
     await page.getByRole("button", { name: "Unarchive" }).click();
     await expect(page.getByRole("button", { name: /^Archived/ })).toHaveCount(0);
   });
 
   test("deleting a course asks first, and Undo restores it", async ({ page }) => {
     await openLibrary(page);
-    await page.getByRole("tab", { name: /Everyday Math/ }).click();
-    await page.getByRole("button", { name: "Options for Everyday Math" }).click();
+    await makeOwnCourse(page, "Networks");
+    await page.getByRole("button", { name: "Options for Networks" }).click();
     await page.getByRole("menuitem", { name: /^Delete course/ }).click();
-    await page.getByRole("menu", { name: "Options for Everyday Math" }).getByRole("button", { name: "Delete" }).click();
-    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveCount(0);
-    await expect(page.getByText("Everyday Math deleted, with its PDFs and chats.")).toBeVisible();
+    await page.getByRole("menu", { name: "Options for Networks" }).getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("tab", { name: /Networks/ })).toHaveCount(0);
+    await expect(page.getByText("Networks deleted, with its PDFs and chats.")).toBeVisible();
     await page.getByRole("button", { name: "Undo" }).click();
-    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: /Networks/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("a sample course's menu offers nothing to change, and says why @mobile", async ({ page }) => {
+    await openLibrary(page);
+    for (const name of ["Algorithms", "Everyday Math"]) {
+      await page.getByRole("tab", { name: new RegExp(name) }).click();
+      await page.getByRole("button", { name: `Options for ${name}` }).click();
+      const menu = page.getByRole("menu", { name: `Options for ${name}` });
+      const item = menu.getByRole("menuitem");
+      await expect(item).toHaveCount(1);
+      await expect(item).toHaveAttribute("aria-disabled", "true");
+      await expect(item).toContainText("Shared by every visitor, so it can’t be edited, archived or deleted.");
+      await expect(item).toBeFocused();
+      // Fully on screen, also on a phone where the button wraps to the left edge.
+      const box = await menu.boundingBox();
+      const width = page.viewportSize()?.width ?? 0;
+      expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      await page.keyboard.press("Escape");
+      await expect(menu).toBeHidden();
+    }
+  });
+
+  test("a sample course takes no PDFs: every way in shows the error, and nothing is added @mobile", async ({ page }) => {
+    await openLibrary(page);
+    const zone = page.getByText("Algorithms is a sample course");
+    await expect(zone).toBeVisible();
+    await expect(page.getByText("It’s shared by every visitor, so PDFs can’t be added here.")).toBeVisible();
+    const slip = page.getByRole("alert").filter({ hasText: "Sample courses can’t be changed" });
+
+    // 1. Files given to the input (what a drop or the picker does).
+    await fileInput(page).setInputFiles([PDF]);
+    await expect(slip).toBeVisible();
+    await expect(slip).toContainText("Algorithms is shared by every visitor, so PDFs can’t be added to it.");
+    await expect(slip.getByRole("listitem")).toHaveText("Week7_Graphs.pdfNot added");
+    await expect(page.getByRole("row", { name: /Week7_Graphs\.pdf/ })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /Algorithms/ })).toContainText("[6]");
+    await slip.getByRole("button", { name: "Got it" }).click();
+    await expect(slip).toBeHidden();
+
+    // 2. Clicking Choose files shows the error instead of a file picker.
+    const chooser = page.waitForEvent("filechooser", { timeout: 1_000 }).then(() => true, () => false);
+    await page.getByText("Choose files").click();
+    await expect(slip).toBeVisible();
+    expect(await chooser).toBe(false);
+    await slip.getByRole("button", { name: "Got it" }).click();
+
+    // 3. The U shortcut too, on Everyday Math.
+    await page.getByRole("tab", { name: /Everyday Math/ }).click();
+    await page.locator("body").click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press("u");
+    await expect(page.getByRole("alert").filter({ hasText: "Everyday Math is shared by every visitor" })).toBeVisible();
+
+    // New course is the way forward.
+    await page.getByRole("alert").getByRole("button", { name: "New course" }).click();
+    await expect(page.getByRole("dialog", { name: "New course" })).toBeVisible();
+  });
+
+  test("the drop zone states the 25 MB limit, and a bigger PDF is skipped with its size", async ({ page }) => {
+    await openLibrary(page);
+    await makeOwnCourse(page, "My notes"); // sample courses take no uploads
+    await expect(page.getByText("up to 25 MB each (a demo limit, for now)")).toBeVisible();
+    await fileInput(page).setInputFiles([BIG_PDF, PDF]);
+    const slip = page.getByRole("alert").filter({ hasText: "Added 1 PDF. Skipped 1 file." });
+    await expect(slip).toBeVisible();
+    await expect(slip).toContainText("up to 25 MB each in this demo, for now");
+    await expect(slip.getByRole("listitem")).toHaveText("Week6_Full_Lecture.pdf25.1 MB");
+    await expect(page.getByRole("row", { name: /Week7_Graphs\.pdf/ })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Week6_Full_Lecture\.pdf/ })).toHaveCount(0);
+  });
+
+  test("New course skips a PDF over 25 MB and names it", async ({ page }) => {
+    await openLibrary(page);
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await expect(dialog).toContainText("up to 25 MB each");
+    await dialog.getByLabel("Lecture PDFs").setInputFiles([BIG_PDF, PDF]);
+    await expect(dialog.getByText("Skipped Week6_Full_Lecture.pdf (25.1 MB): over the 25 MB limit for now.")).toBeVisible();
+    await expect(dialog.getByRole("list", { name: "PDFs to add" })).toHaveText(/Week7_Graphs\.pdf/);
+    await expect(dialog.getByRole("list", { name: "PDFs to add" })).not.toContainText("Week6_Full_Lecture.pdf");
   });
 
   test("Run OCR reads the scan, then the document becomes Ready", async ({ page }) => {

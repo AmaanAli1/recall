@@ -4,6 +4,30 @@
  * file, starting with the PDF magic bytes, because the browser can be bypassed.
  */
 
+/**
+ * The demo's size limit per PDF, for now. Every upload is parsed and embedded
+ * on a small server at the project's cost, so big files are refused up front.
+ * This check is for UX only: the real upload API (still to build) must refuse
+ * files over the same limit, because the browser can be bypassed.
+ */
+export const MAX_PDF_MB = 25;
+export const MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024;
+
+/**
+ * "48 MB", "25.3 MB", "0.4 MB". Rounded UP (one decimal under 100 MB), so a
+ * file over the limit never reads as "25 MB" next to "over the 25 MB limit".
+ * The tiny epsilon stops float noise turning an exact 0.4 into 0.5.
+ */
+export function formatSize(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  const shown = mb >= 100 ? String(Math.ceil(mb - 1e-9)) : String(Math.ceil(mb * 10 - 1e-9) / 10);
+  return `${shown} MB`;
+}
+
+export function isTooBig(size = 0): boolean {
+  return size > MAX_PDF_BYTES;
+}
+
 export function isPdf(name: string, type = ""): boolean {
   return type === "application/pdf" || /\.pdf$/i.test(name);
 }
@@ -26,18 +50,23 @@ export function kindOf(name: string, type = ""): string {
   return `.${ext} file`;
 }
 
+/** Why a file was skipped: not a PDF, or a PDF over the size limit. */
+export type SkipReason = "type" | "size";
+
 export interface SplitResult<T> {
   accepted: T[];
-  rejected: { file: T; kind: string }[];
+  /** `kind` is the label shown next to the name: "PowerPoint", or "48 MB" for a big PDF. */
+  rejected: { file: T; kind: string; reason: SkipReason }[];
 }
 
 /** Split dropped files into PDFs to upload and everything else to explain. */
-export function splitFiles<T extends { name: string; type: string }>(files: T[]): SplitResult<T> {
+export function splitFiles<T extends { name: string; type: string; size?: number }>(files: T[]): SplitResult<T> {
   const accepted: T[] = [];
-  const rejected: { file: T; kind: string }[] = [];
+  const rejected: SplitResult<T>["rejected"] = [];
   for (const f of files) {
-    if (isPdf(f.name, f.type)) accepted.push(f);
-    else rejected.push({ file: f, kind: kindOf(f.name, f.type) });
+    if (!isPdf(f.name, f.type)) rejected.push({ file: f, kind: kindOf(f.name, f.type), reason: "type" });
+    else if (isTooBig(f.size)) rejected.push({ file: f, kind: formatSize(f.size ?? 0), reason: "size" });
+    else accepted.push(f);
   }
   return { accepted, rejected };
 }

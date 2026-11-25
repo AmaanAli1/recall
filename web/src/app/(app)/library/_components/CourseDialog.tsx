@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Course, CourseColor, CourseInput } from "@/lib/api";
 import { CODE_MAX, COURSE_COLORS, COURSE_LIMIT, FILES_PER_BATCH, NAME_MAX, TERMS, cleanCode, cleanName, courseNameError, ownCourseCount } from "@/lib/courses";
-import { isPdf } from "@/lib/files";
+import { formatSize, isPdf, isTooBig, MAX_PDF_MB } from "@/lib/files";
 import s from "../library.module.css";
 
 export type DialogMode = { kind: "new" } | { kind: "edit"; course: Course };
@@ -102,14 +102,21 @@ export function CourseDialog({
 
   const addFiles = (list: FileList | null) => {
     const all = Array.from(list ?? []);
-    const pdfs = all.filter((f) => isPdf(f.name, f.type));
+    const allPdfs = all.filter((f) => isPdf(f.name, f.type));
+    // PDFs over the demo's size limit are named, so you know which one to split.
+    const big = allPdfs.filter((f) => isTooBig(f.size));
+    const pdfs = allPdfs.filter((f) => !isTooBig(f.size));
     const have = new Set(files.map((f) => f.name));
     const fresh = pdfs.filter((f) => !have.has(f.name));
     const room = Math.max(0, FILES_PER_BATCH - files.length);
     const notes: string[] = [];
-    const nonPdf = all.length - pdfs.length;
+    const nonPdf = all.length - allPdfs.length;
     const dupes = pdfs.length - fresh.length;
     if (nonPdf) notes.push(`Skipped ${nonPdf} non-PDF file${nonPdf === 1 ? "" : "s"}.`);
+    if (big.length) {
+      const named = big.map((f) => `${f.name} (${formatSize(f.size)})`).join(", ");
+      notes.push(`Skipped ${named}: over the ${MAX_PDF_MB} MB limit for now.`);
+    }
     if (dupes) notes.push(`Skipped ${dupes} duplicate${dupes === 1 ? "" : "s"}.`);
     if (fresh.length > room) notes.push(`Up to ${FILES_PER_BATCH} PDFs at once. Add the rest after.`);
     setFiles((f) => [...f, ...fresh.slice(0, room)]);
@@ -295,7 +302,7 @@ export function CourseDialog({
                 <div>
                   <span className={s.dlgLabel}>
                     <span id={`${ids}-pdfs`}>Lecture PDFs</span>
-                    <span className={s.dlgOpt}>Optional, add more any time</span>
+                    <span className={s.dlgOpt}>Optional · up to {MAX_PDF_MB} MB each</span>
                   </span>
                   <label
                     htmlFor={`${ids}-files`}

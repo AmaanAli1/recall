@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { dragVerdict, splitFiles } from "@/lib/files";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type MouseEvent } from "react";
+import { dragVerdict, MAX_PDF_MB, splitFiles } from "@/lib/files";
 import { RejectionSlip, type Rejection } from "./RejectionSlip";
 import s from "../library.module.css";
 
@@ -12,8 +12,22 @@ const INPUT_ID = "upload";
  * clickable and keyboard users get the native file picker. Drag-over shows a
  * verdict before the drop (only MIME types are readable mid-drag), and a drop
  * with non-PDFs shakes the card and opens the rejection slip below it.
+ *
+ * `locked` (a sample course): the zone says up front that PDFs can't be added,
+ * and every way in (drop, Choose files, the U key, the file input) opens the
+ * slip with that error instead. Nothing reaches onAccept.
  */
-export function DropZone({ courseName, onAccept }: { courseName: string; onAccept: (files: File[]) => void }) {
+export function DropZone({
+  courseName,
+  locked = false,
+  onAccept,
+  onNewCourse,
+}: {
+  courseName: string;
+  locked?: boolean;
+  onAccept: (files: File[]) => void;
+  onNewCourse?: () => void;
+}) {
   const [drag, setDrag] = useState<"ok" | "bad" | null>(null);
   const [shake, setShake] = useState(0);
   // The slip keeps its last content after closing so the collapse animates with text in it.
@@ -23,14 +37,27 @@ export function DropZone({ courseName, onAccept }: { courseName: string; onAccep
   const depth = useRef(0);
   const input = useRef<HTMLInputElement>(null);
 
+  /** Show the "sample course" error, listing any files that were dropped. */
+  const refuse = (files: File[] = []) => {
+    setRejection({ files: files.map((f) => ({ name: f.name, kind: "Not added", reason: "sample" })), added: 0, locked: courseName });
+    setSlipOpen(true);
+    setShake((n) => n + 1);
+  };
+  // The U-key listener below is added once per `locked`; it calls the latest refuse() through this.
+  const refuseRef = useRef(refuse);
+  useEffect(() => {
+    refuseRef.current = refuse;
+  });
+
   const take = (list: FileList | null) => {
     const files = Array.from(list ?? []);
     setDrag(null);
+    if (locked) return refuse(files);
     if (!files.length) return;
     const { accepted, rejected } = splitFiles(files);
     if (accepted.length) onAccept(accepted);
     if (rejected.length) {
-      setRejection({ files: rejected.map((r) => ({ name: r.file.name, kind: r.kind })), added: accepted.length });
+      setRejection({ files: rejected.map((r) => ({ name: r.file.name, kind: r.kind, reason: r.reason })), added: accepted.length });
       setSlipOpen(true);
       setShake((n) => n + 1);
     } else {
@@ -45,16 +72,24 @@ export function DropZone({ courseName, onAccept }: { courseName: string; onAccep
       const t = e.target as HTMLElement | null;
       if (t?.closest("input, textarea, select, [contenteditable='true']")) return;
       e.preventDefault();
-      input.current?.click();
+      if (locked) refuseRef.current();
+      else input.current?.click();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [locked]);
 
   const onDragEnter = (e: DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     depth.current++;
-    setDrag(dragVerdict(Array.from(e.dataTransfer.items)));
+    setDrag(locked ? "bad" : dragVerdict(Array.from(e.dataTransfer.items)));
+  };
+  // Clicking the zone (or Space on the file input) would open the file picker:
+  // on a sample course, show the error instead of letting someone pick files for nothing.
+  const onClick = (e: MouseEvent<HTMLLabelElement>) => {
+    if (!locked) return;
+    e.preventDefault();
+    refuse();
   };
   const onDragOver = (e: DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
@@ -89,6 +124,7 @@ export function DropZone({ courseName, onAccept }: { courseName: string; onAccep
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
+        onClick={onClick}
       >
         <span className="flex items-center gap-[18px]">
           <span aria-hidden="true" className="relative h-12 w-[38px] flex-none">
@@ -104,12 +140,20 @@ export function DropZone({ courseName, onAccept }: { courseName: string; onAccep
           </span>
           <span>
             <span aria-live="polite" className={`block text-[17px] font-medium ${drag === "bad" ? "text-bad" : "text-ink"}`}>
-              {drag === "ok" ? `Release to add to ${courseName}` : drag === "bad" ? "PDFs only" : `Drop lecture PDFs into ${courseName}`}
+              {locked
+                ? `${courseName} is a sample course`
+                : drag === "ok"
+                  ? `Release to add to ${courseName}`
+                  : drag === "bad"
+                    ? "PDFs only"
+                    : `Drop lecture PDFs into ${courseName}`}
             </span>
             <span className="mt-1 block text-sm text-ink-2">
-              {drag === "bad"
-                ? "Recall reads text from PDFs. Export this file as a PDF first."
-                : "PDFs with selectable text, up to [MAX SIZE] each. Scans need OCR first."}
+              {locked
+                ? "It’s shared by every visitor, so PDFs can’t be added here. Make a course of your own for yours."
+                : drag === "bad"
+                  ? "Recall reads text from PDFs. Export this file as a PDF first."
+                  : `PDFs with selectable text, up to ${MAX_PDF_MB} MB each (a demo limit, for now). Scans need OCR first.`}
             </span>
           </span>
         </span>
@@ -128,7 +172,7 @@ export function DropZone({ courseName, onAccept }: { courseName: string; onAccep
           className={s.fileInput}
         />
       </label>
-      <RejectionSlip rejection={rejection} open={slipOpen} inputId={INPUT_ID} onDismiss={() => setSlipOpen(false)} />
+      <RejectionSlip rejection={rejection} open={slipOpen} inputId={INPUT_ID} onDismiss={() => setSlipOpen(false)} onNewCourse={onNewCourse} />
     </>
   );
 }
