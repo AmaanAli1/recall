@@ -30,6 +30,26 @@ export interface QuestionResult {
   top: RetrievedChunk[];
 }
 
+/** A follow-up (golden id "fu-…"): ranked as the student typed it, and after query rewriting. */
+export interface FollowUpResult {
+  id: string;
+  rankAsTyped: number | null;
+  /** The rank after rewriting: what the live API searches with. */
+  rank: number | null;
+  /** The rewritten question; null = the rewrite kept it as typed. */
+  rewritten: string | null;
+  top: RetrievedChunk[];
+}
+
+/** An off-topic question (golden id "off-…"): right when the best match is below the threshold. */
+export interface OffTopicResult {
+  id: string;
+  bestScore: number;
+  /** best < threshold: the live answer would say "not found" without asking the model. */
+  notFound: boolean;
+  top: RetrievedChunk[];
+}
+
 export interface RealRun {
   id: string; // "R1"
   date: string; // ISO day, "2026-11-22"
@@ -48,7 +68,28 @@ export interface RealRun {
   tokens: number;
   costUsd: number;
   durationS: number;
+  /** Core questions only: `n` and `metrics` are about these (comparable with run 1). */
   questions: QuestionResult[];
+  /** Since run 2. Tokens spent rewriting follow-ups (their cost isn't priced in the script). */
+  rewriteTokens?: number;
+  /** Since run 2: follow-ups, scored on their own (never averaged with the core). */
+  followUps?: {
+    n: number;
+    asTyped: { recall5: Estimate; mrr: Estimate };
+    rewritten: { recall5: Estimate; mrr: Estimate };
+    questions: FollowUpResult[];
+  };
+  /** Since run 2: off-topic questions and the margin between them and the real ones. */
+  offTopic?: {
+    n: number;
+    threshold: number;
+    notFound: number;
+    /** The off-topic question that came closest to being answered. */
+    highestScore: number;
+    /** The real (core) question whose best match was weakest. */
+    lowestCoreScore: number;
+    questions: OffTopicResult[];
+  };
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -69,6 +110,36 @@ function isQuestion(v: unknown): v is QuestionResult {
   );
 }
 
+const isRank = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 1);
+const isTop = (v: unknown) =>
+  Array.isArray(v) && v.every((c) => isObj(c) && isStr(c.file) && Number.isInteger(c.page) && isNum(c.score));
+const isMetrics = (v: unknown) => isObj(v) && isEstimate(v.recall5) && isEstimate(v.mrr);
+
+/** Optional since run 2; when present it must be whole (n matches the list, ranks valid). */
+function isFollowUps(v: unknown): boolean {
+  if (v === undefined) return true;
+  if (!isObj(v) || !Array.isArray(v.questions) || !isMetrics(v.asTyped) || !isMetrics(v.rewritten)) return false;
+  return (
+    v.n === v.questions.length &&
+    v.questions.every(
+      (q) => isObj(q) && isStr(q.id) && isRank(q.rankAsTyped) && isRank(q.rank) && (q.rewritten === null || isStr(q.rewritten)) && isTop(q.top),
+    )
+  );
+}
+
+function isOffTopic(v: unknown): boolean {
+  if (v === undefined) return true;
+  if (!isObj(v) || !Array.isArray(v.questions)) return false;
+  return (
+    v.n === v.questions.length &&
+    isNum(v.threshold) &&
+    isNum(v.highestScore) &&
+    isNum(v.lowestCoreScore) &&
+    v.notFound === v.questions.filter((q) => isObj(q) && q.notFound === true).length &&
+    v.questions.every((q) => isObj(q) && isStr(q.id) && isNum(q.bestScore) && typeof q.notFound === "boolean" && isTop(q.top))
+  );
+}
+
 function isRun(v: unknown): v is RealRun {
   if (!isObj(v) || !isObj(v.metrics) || !isObj(v.setup) || !Array.isArray(v.questions)) return false;
   return (
@@ -86,7 +157,10 @@ function isRun(v: unknown): v is RealRun {
     isNum(v.tokens) &&
     isNum(v.costUsd) &&
     isNum(v.durationS) &&
-    v.questions.every(isQuestion)
+    v.questions.every(isQuestion) &&
+    (v.rewriteTokens === undefined || isNum(v.rewriteTokens)) &&
+    isFollowUps(v.followUps) &&
+    isOffTopic(v.offTopic)
   );
 }
 

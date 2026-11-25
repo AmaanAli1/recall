@@ -18,7 +18,7 @@ function variant(ranks: Record<string, number | null>, recall = REAL_RUNS[0].met
 
 describe("DynoResults (real runs, v0)", () => {
   it("shows run 1 as the baseline with only the metrics v0 measures", () => {
-    render(<DynoResults runs={REAL_RUNS} />);
+    render(<DynoResults runs={REAL_RUNS.slice(0, 1)} />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run 1: the baseline.");
     const scores = screen.getByRole("region", { name: "Latest run's scores" });
     expect(within(scores).getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
@@ -59,7 +59,7 @@ describe("DynoResults (real runs, v0)", () => {
     expect(screen.getByRole("button", { name: "Hide details for run 1" })).toHaveAttribute("aria-expanded", "true");
     const commit = screen.getByRole("link", { name: REAL_RUNS[0].commit });
     expect(commit).toHaveAttribute("href", `https://github.com/AmaanAli1/recall/commit/${REAL_RUNS[0].commit}`);
-    expect(screen.getByText(REAL_RUNS[0].setup.embedModel)).toBeInTheDocument();
+    expect(within(document.getElementById("det-R1")!).getByText(REAL_RUNS[0].setup.embedModel)).toBeInTheDocument();
   });
 
   it("lists every question's rank: first plain, lower ones flagged, misses called out", () => {
@@ -107,9 +107,89 @@ describe("DynoResults (real runs, v0)", () => {
 
   it("links to the golden set's questions", () => {
     render(<DynoResults runs={REAL_RUNS} />);
-    expect(screen.getByRole("link", { name: /See the 20 questions/ })).toHaveAttribute(
+    render(<DynoResults runs={REAL_RUNS.slice(0, 1)} />);
+    cleanup();
+    render(<DynoResults runs={REAL_RUNS} />);
+    // Run 2 adds 8 follow-ups and 5 off-topic questions to the 20.
+    expect(screen.getByRole("link", { name: /See all 33 questions/ })).toHaveAttribute(
       "href",
       "https://github.com/AmaanAli1/recall/blob/main/dyno/golden.toml",
     );
+  });
+
+});
+
+describe("DynoResults: run 2 (follow-ups and off-topic, committed)", () => {
+  const run2 = REAL_RUNS.find((r) => r.id === "R2")!;
+
+  it("names the change, and says the core numbers match run 1", () => {
+    render(<DynoResults runs={REAL_RUNS} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run 2: Query rewriting + follow-ups + off-topic");
+    expect(screen.getByText(/plus 8 follow-ups and 5 off-topic questions, each group scored on its own/)).toBeInTheDocument();
+    const scores = screen.getByRole("region", { name: "Latest run's scores" });
+    expect(within(scores).getByText("Same as run 1 (20/20)")).toBeInTheDocument();
+    expect(within(scores).getByText("Same as run 1 (0.76)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Where each right page ranked (core questions)" })).toBeInTheDocument();
+  });
+
+  it("shows the follow-ups before and after rewriting, with every question's wording", () => {
+    render(<DynoResults runs={REAL_RUNS} />);
+    const section = screen.getByRole("region", { name: "Follow-up questions: query rewriting" });
+    expect(within(section).getByText("3 of 8 as typed, 8 of 8 rewritten")).toBeInTheDocument();
+    expect(within(section).getByText("0.20 as typed, 0.92 rewritten")).toBeInTheDocument();
+    expect(within(section).getByText("As typed: 95% interval 0.07–0.35")).toBeInTheDocument();
+    const rows = within(within(section).getByRole("group", { name: "Follow-up questions table" })).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(8);
+    const fu01 = rows[0];
+    expect(fu01).toHaveTextContent("How does quicksort work?");
+    expect(fu01).toHaveTextContent("Why can it take quadratic time?");
+    expect(fu01).toHaveTextContent("Why can quicksort take quadratic time?");
+    expect(fu01).toHaveTextContent(/Not in top 101st$/); // as typed: miss → rewritten: first
+    expect(within(section).getByText(/only 8: real follow-ups are messier/)).toBeInTheDocument();
+  });
+
+  it("shows which off-topic questions retrieval turned away, and the overlap honestly", () => {
+    render(<DynoResults runs={REAL_RUNS} />);
+    const section = screen.getByRole("region", { name: "Off-topic questions: does it say “not found”?" });
+    const rows = within(section).getAllByRole("row").slice(1);
+    expect(rows.map((r) => within(r).getAllByRole("cell").at(-1)!.textContent)).toEqual([
+      "Not found",
+      "Not found",
+      "Not found",
+      "Would answer",
+      "Would answer",
+    ]);
+    expect(rows[4]).toHaveTextContent("How do I rebalance a red-black tree after an insertion?");
+    expect(rows[4]).toHaveTextContent("Ch 3 p. 49 · 0.53");
+    // What we found when we looked: notes under the two that got through.
+    expect(rows[3]).toHaveTextContent("politicians shaking hands");
+    expect(rows[4]).toHaveTextContent("chapter 3's exercises define red-black trees");
+    expect(rows[0]).not.toHaveTextContent(/chapter|puzzle/);
+    expect(within(section).getByText(/strongest off-topic match scored 0\.53; the weakest real question’s best match scored 0\.52/)).toBeInTheDocument();
+    expect(within(section).getByText(/They overlap, so no single similarity threshold can separate them/)).toBeInTheDocument();
+    expect(within(section).getByText(/Dyno doesn’t measure that step yet/)).toBeInTheDocument();
+  });
+
+  it("says when a threshold would separate them, without the second-guard note", () => {
+    const apart = structuredClone(run2);
+    apart.offTopic = { ...apart.offTopic!, highestScore: 0.3, lowestCoreScore: 0.52 };
+    render(<DynoResults runs={[REAL_RUNS[0], apart]} />);
+    expect(screen.getByText(/A threshold between those two would separate them\./)).toBeInTheDocument();
+    expect(screen.queryByText(/second guard/)).not.toBeInTheDocument();
+  });
+
+  it("a run without follow-ups or off-topic shows neither section", () => {
+    render(<DynoResults runs={REAL_RUNS.slice(0, 1)} />);
+    expect(screen.queryByRole("region", { name: /Follow-up questions/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Off-topic/ })).not.toBeInTheDocument();
+  });
+
+  it("lists the rewrite tokens and the extra questions in the run's details", () => {
+    render(<DynoResults runs={REAL_RUNS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Show details for run 2" }));
+    const details = document.getElementById("det-R2")!;
+    expect(details).toHaveTextContent(`${run2.tokens} embedding tokens + ${run2.rewriteTokens} rewrite tokens, under $0.01`);
+    expect(details).toHaveTextContent("20 core questions, page-labelled; 8 follow-ups; 5 off-topic");
+    expect(details).toHaveTextContent("gpt-5.4-mini, follow-ups only");
   });
 });

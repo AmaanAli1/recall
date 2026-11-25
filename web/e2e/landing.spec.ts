@@ -49,17 +49,21 @@ test.describe("landing page", () => {
     await expect(page.getByText("REDLINE · WOULD BLOCK")).toBeVisible();
   });
 
-  test("the bench is labelled as an example and the receipt prints the real run 1", async ({ page }) => {
+  test("the bench is labelled as an example and the receipt prints the latest real run", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText("Example scores, not real runs. The dashboard has the real ones.")).toBeVisible();
     await expect(page.getByText(/on every pull request/)).toHaveCount(0);
     await expect(page.getByText(/MERGED/)).toHaveCount(0);
     const receipt = page.locator("figure").filter({ hasText: "DYNO PRINTOUT" });
-    await expect(receipt).toContainText("run 1 · Nov 22");
-    await expect(receipt).toContainText('dyno_run --change "Baseline"');
+    await expect(receipt).toContainText("run 2 · Nov 25");
+    await expect(receipt).toContainText('dyno_run --change "Query rewriting + follow-ups + off-topic"');
     await expect(receipt).toContainText("20/20");
     await expect(receipt).toContainText("0.63–0.89");
-    await expect(receipt).toContainText("Real output from run 1: 20 golden questions, retrieval only.");
+    // Run 2's point: follow-ups after rewriting (vs as typed), and off-topic turned away.
+    await expect(receipt).toContainText("follow-up mrr0.92typed 0.20");
+    await expect(receipt).toContainText("off-topic3/5not found");
+    await expect(receipt).toContainText("Real output from run 2: 20 golden questions + 8 follow-ups + 5 off-topic, retrieval only.");
+    await expect(receipt).toContainText("LOGGED");
     await expect(receipt).not.toContainText(/MLflow|p95/);
     // The spec sheet states only what's built; the rest says "planned".
     const spec = page.getByRole("region", { name: "The spec sheet." });

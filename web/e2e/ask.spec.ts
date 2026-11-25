@@ -212,9 +212,10 @@ test.describe("ask", () => {
     await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(4);
     await expect(page).toHaveURL(/\/ask$/);
     await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
-    // The glance card shows the real Dyno run 1 (the committed baseline).
-    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("run 1 · Nov 22");
-    await expect(side.getByText("recall@5 · baseline")).toBeVisible();
+    // The glance card shows the latest real Dyno run: run 2, "logged" (v0 has no pass/fail gate).
+    await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("run 2 · Nov 25");
+    await expect(side.getByText("recall@5 · logged")).toBeVisible();
+    await expect(side.getByText(/recall@5 · clear/)).toHaveCount(0);
   });
 
   test("the Settings × closes the popover", async ({ page }) => {

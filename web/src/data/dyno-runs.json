@@ -650,5 +650,1120 @@
         ]
       }
     ]
+  },
+  {
+    "id": "R2",
+    "date": "2026-11-25",
+    "change": "Query rewriting + follow-ups + off-topic",
+    "commit": "89756ff",
+    "n": 20,
+    "metrics": {
+      "recall5": {
+        "value": 1.0,
+        "low": 1.0,
+        "high": 1.0
+      },
+      "mrr": {
+        "value": 0.762,
+        "low": 0.63,
+        "high": 0.885
+      }
+    },
+    "setup": {
+      "chunking": "400-token chunks (max 500, 50 overlap), one page each",
+      "retrieval": "cosine similarity (pgvector)",
+      "topK": 10,
+      "reranker": "none",
+      "rewriting": "gpt-5.4-mini, follow-ups only",
+      "embedModel": "text-embedding-3-small"
+    },
+    "tokens": 477,
+    "costUsd": 1e-05,
+    "rewriteTokens": 2055,
+    "durationS": 12.4,
+    "questions": [
+      {
+        "id": "rec-01",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 6,
+            "score": 0.742
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 5,
+            "score": 0.717
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 28,
+            "score": 0.716
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 5,
+            "score": 0.684
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 27,
+            "score": 0.635
+          }
+        ]
+      },
+      {
+        "id": "rec-02",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 8,
+            "score": 0.588
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 7,
+            "score": 0.576
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 13,
+            "score": 0.574
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 6,
+            "score": 0.547
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 11,
+            "score": 0.539
+          }
+        ]
+      },
+      {
+        "id": "rec-03",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 10,
+            "score": 0.569
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 15,
+            "score": 0.514
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 11,
+            "score": 0.514
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 16,
+            "score": 0.508
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 9,
+            "score": 0.507
+          }
+        ]
+      },
+      {
+        "id": "rec-04",
+        "rank": 2,
+        "top": [
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 19,
+            "score": 0.564
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 17,
+            "score": 0.541
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 19,
+            "score": 0.507
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 16,
+            "score": 0.491
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 17,
+            "score": 0.46
+          }
+        ]
+      },
+      {
+        "id": "rec-05",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 21,
+            "score": 0.634
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 22,
+            "score": 0.627
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 20,
+            "score": 0.609
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 36,
+            "score": 0.597
+          },
+          {
+            "file": "Erickson_Ch1_Recursion.pdf",
+            "page": 36,
+            "score": 0.58
+          }
+        ]
+      },
+      {
+        "id": "dp-01",
+        "rank": 2,
+        "top": [
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 8,
+            "score": 0.629
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 3,
+            "score": 0.623
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 3,
+            "score": 0.614
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 8,
+            "score": 0.584
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 7,
+            "score": 0.582
+          }
+        ]
+      },
+      {
+        "id": "dp-02",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 6,
+            "score": 0.678
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 5,
+            "score": 0.622
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 5,
+            "score": 0.614
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 9,
+            "score": 0.595
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 11,
+            "score": 0.585
+          }
+        ]
+      },
+      {
+        "id": "dp-03",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 12,
+            "score": 0.695
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 11,
+            "score": 0.684
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 12,
+            "score": 0.679
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 4,
+            "score": 0.58
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 27,
+            "score": 0.574
+          }
+        ]
+      },
+      {
+        "id": "dp-04",
+        "rank": 2,
+        "top": [
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 15,
+            "score": 0.596
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 16,
+            "score": 0.595
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 17,
+            "score": 0.545
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 16,
+            "score": 0.536
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 19,
+            "score": 0.534
+          }
+        ]
+      },
+      {
+        "id": "dp-05",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 21,
+            "score": 0.623
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 20,
+            "score": 0.593
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 21,
+            "score": 0.533
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 9,
+            "score": 0.523
+          },
+          {
+            "file": "Erickson_Ch3_DynamicProgramming.pdf",
+            "page": 22,
+            "score": 0.521
+          }
+        ]
+      },
+      {
+        "id": "greedy-01",
+        "rank": 2,
+        "top": [
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 1,
+            "score": 0.549
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 2,
+            "score": 0.549
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 2,
+            "score": 0.493
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 3,
+            "score": 0.433
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 25,
+            "score": 0.4
+          }
+        ]
+      },
+      {
+        "id": "greedy-02",
+        "rank": 2,
+        "top": [
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 6,
+            "score": 0.672
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 5,
+            "score": 0.665
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 4,
+            "score": 0.63
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 4,
+            "score": 0.619
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 19,
+            "score": 0.611
+          }
+        ]
+      },
+      {
+        "id": "greedy-03",
+        "rank": 5,
+        "top": [
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 10,
+            "score": 0.733
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 11,
+            "score": 0.656
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 10,
+            "score": 0.652
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 7,
+            "score": 0.647
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 8,
+            "score": 0.631
+          }
+        ]
+      },
+      {
+        "id": "greedy-04",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 13,
+            "score": 0.706
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 17,
+            "score": 0.684
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 21,
+            "score": 0.627
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 18,
+            "score": 0.601
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 17,
+            "score": 0.599
+          }
+        ]
+      },
+      {
+        "id": "greedy-05",
+        "rank": 3,
+        "top": [
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 15,
+            "score": 0.689
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 15,
+            "score": 0.643
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 17,
+            "score": 0.643
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 21,
+            "score": 0.611
+          },
+          {
+            "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+            "page": 18,
+            "score": 0.611
+          }
+        ]
+      },
+      {
+        "id": "sssp-01",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 5,
+            "score": 0.52
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 21,
+            "score": 0.376
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 5,
+            "score": 0.359
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 19,
+            "score": 0.355
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 17,
+            "score": 0.353
+          }
+        ]
+      },
+      {
+        "id": "sssp-02",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 9,
+            "score": 0.626
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 7,
+            "score": 0.612
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 9,
+            "score": 0.609
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 6,
+            "score": 0.605
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 10,
+            "score": 0.578
+          }
+        ]
+      },
+      {
+        "id": "sssp-03",
+        "rank": 5,
+        "top": [
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 3,
+            "score": 0.679
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 3,
+            "score": 0.64
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 2,
+            "score": 0.634
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 18,
+            "score": 0.617
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 10,
+            "score": 0.612
+          }
+        ]
+      },
+      {
+        "id": "sssp-04",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 16,
+            "score": 0.559
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 16,
+            "score": 0.512
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 18,
+            "score": 0.495
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 17,
+            "score": 0.492
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 14,
+            "score": 0.472
+          }
+        ]
+      },
+      {
+        "id": "sssp-05",
+        "rank": 1,
+        "top": [
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 20,
+            "score": 0.634
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 27,
+            "score": 0.617
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 27,
+            "score": 0.562
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 3,
+            "score": 0.557
+          },
+          {
+            "file": "Erickson_Ch8_ShortestPaths.pdf",
+            "page": 21,
+            "score": 0.556
+          }
+        ]
+      }
+    ],
+    "followUps": {
+      "n": 8,
+      "asTyped": {
+        "recall5": {
+          "value": 0.375,
+          "low": 0.125,
+          "high": 0.75
+        },
+        "mrr": {
+          "value": 0.2,
+          "low": 0.067,
+          "high": 0.346
+        }
+      },
+      "rewritten": {
+        "recall5": {
+          "value": 1.0,
+          "low": 1.0,
+          "high": 1.0
+        },
+        "mrr": {
+          "value": 0.917,
+          "low": 0.75,
+          "high": 1.0
+        }
+      },
+      "questions": [
+        {
+          "id": "fu-01",
+          "rankAsTyped": null,
+          "rank": 1,
+          "rewritten": "Why can quicksort take quadratic time?",
+          "top": [
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 10,
+              "score": 0.569
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 15,
+              "score": 0.514
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 11,
+              "score": 0.514
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 16,
+              "score": 0.508
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 9,
+              "score": 0.507
+            }
+          ]
+        },
+        {
+          "id": "fu-02",
+          "rankAsTyped": 2,
+          "rank": 3,
+          "rewritten": "How many moves does the recursive solution to the Tower of Hanoi puzzle need?",
+          "top": [
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 28,
+              "score": 0.748
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 5,
+              "score": 0.697
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 6,
+              "score": 0.695
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 4,
+              "score": 0.686
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 27,
+              "score": 0.649
+            }
+          ]
+        },
+        {
+          "id": "fu-03",
+          "rankAsTyped": null,
+          "rank": 1,
+          "rewritten": "What recurrence defines edit distance?",
+          "top": [
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 16,
+              "score": 0.597
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 15,
+              "score": 0.585
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 17,
+              "score": 0.563
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 16,
+              "score": 0.555
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 19,
+              "score": 0.536
+            }
+          ]
+        },
+        {
+          "id": "fu-04",
+          "rankAsTyped": 2,
+          "rank": 1,
+          "rewritten": "How fast is the dynamic programming solution to the subset sum problem?",
+          "top": [
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 21,
+              "score": 0.615
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 20,
+              "score": 0.572
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 21,
+              "score": 0.537
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 9,
+              "score": 0.515
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 22,
+              "score": 0.509
+            }
+          ]
+        },
+        {
+          "id": "fu-05",
+          "rankAsTyped": 3,
+          "rank": 1,
+          "rewritten": "How does the Huffman coding algorithm decide what to merge?",
+          "top": [
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 8,
+              "score": 0.651
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 11,
+              "score": 0.617
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 10,
+              "score": 0.594
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 7,
+              "score": 0.569
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 11,
+              "score": 0.565
+            }
+          ]
+        },
+        {
+          "id": "fu-06",
+          "rankAsTyped": 10,
+          "rank": 1,
+          "rewritten": "Does it matter who makes offers first in the stable matching problem?",
+          "top": [
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 17,
+              "score": 0.53
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 16,
+              "score": 0.508
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 14,
+              "score": 0.502
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 15,
+              "score": 0.5
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 14,
+              "score": 0.494
+            }
+          ]
+        },
+        {
+          "id": "fu-07",
+          "rankAsTyped": null,
+          "rank": 1,
+          "rewritten": "How fast is Dijkstra's algorithm with a binary heap?",
+          "top": [
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 16,
+              "score": 0.579
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 16,
+              "score": 0.508
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 18,
+              "score": 0.501
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 17,
+              "score": 0.5
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 14,
+              "score": 0.493
+            }
+          ]
+        },
+        {
+          "id": "fu-08",
+          "rankAsTyped": 6,
+          "rank": 1,
+          "rewritten": "How can the Bellman-Ford algorithm tell there's a negative cycle?",
+          "top": [
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 20,
+              "score": 0.643
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 27,
+              "score": 0.621
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 21,
+              "score": 0.556
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 22,
+              "score": 0.553
+            },
+            {
+              "file": "Erickson_Ch8_ShortestPaths.pdf",
+              "page": 27,
+              "score": 0.552
+            }
+          ]
+        }
+      ]
+    },
+    "offTopic": {
+      "n": 5,
+      "threshold": 0.25,
+      "notFound": 3,
+      "highestScore": 0.531,
+      "lowestCoreScore": 0.52,
+      "questions": [
+        {
+          "id": "off-01",
+          "bestScore": 0.165,
+          "notFound": true,
+          "top": [
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 3,
+              "score": 0.165
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 10,
+              "score": 0.154
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 24,
+              "score": 0.151
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 29,
+              "score": 0.15
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 22,
+              "score": 0.145
+            }
+          ]
+        },
+        {
+          "id": "off-02",
+          "bestScore": 0.09,
+          "notFound": true,
+          "top": [
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 37,
+              "score": 0.09
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 4,
+              "score": 0.088
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 43,
+              "score": 0.087
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 26,
+              "score": 0.082
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 34,
+              "score": 0.081
+            }
+          ]
+        },
+        {
+          "id": "off-03",
+          "bestScore": 0.113,
+          "notFound": true,
+          "top": [
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 23,
+              "score": 0.113
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 43,
+              "score": 0.107
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 19,
+              "score": 0.106
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 30,
+              "score": 0.106
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 16,
+              "score": 0.103
+            }
+          ]
+        },
+        {
+          "id": "off-04",
+          "bestScore": 0.258,
+          "notFound": false,
+          "top": [
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 9,
+              "score": 0.258
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 14,
+              "score": 0.234
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 15,
+              "score": 0.225
+            },
+            {
+              "file": "Erickson_Ch4_GreedyAlgorithms.pdf",
+              "page": 8,
+              "score": 0.217
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 46,
+              "score": 0.213
+            }
+          ]
+        },
+        {
+          "id": "off-05",
+          "bestScore": 0.531,
+          "notFound": false,
+          "top": [
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 49,
+              "score": 0.531
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 48,
+              "score": 0.502
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 48,
+              "score": 0.498
+            },
+            {
+              "file": "Erickson_Ch1_Recursion.pdf",
+              "page": 48,
+              "score": 0.475
+            },
+            {
+              "file": "Erickson_Ch3_DynamicProgramming.pdf",
+              "page": 61,
+              "score": 0.456
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

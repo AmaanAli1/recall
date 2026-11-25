@@ -31,15 +31,19 @@ export function dynoGlance(sample: DynoRun[], isGoldenCourse: boolean): Omit<Gla
   }
   const real = REAL_RUNS.at(-1);
   if (!real) return none;
-  // v0 has no redline gate yet, so later runs read as "clear" only once v1 adds one.
-  return { recall: real.metrics.recall5.value, gate: REAL_RUNS.length === 1 ? "baseline" : "clear", run: { id: real.id, date: formatRunDate(real.date, false) } };
+  // v0 has no redline gate, so a later real run is "logged" (as in /dyno's runs table),
+  // never "clear": that would claim a check nobody ran.
+  return { recall: real.metrics.recall5.value, gate: REAL_RUNS.length === 1 ? "baseline" : "logged", run: { id: real.id, date: formatRunDate(real.date, false) } };
 }
 
 export interface Glance {
   passages: number;
   recall: number | null;
-  /** How the latest run compares: the first run is the baseline itself. */
-  gate: "baseline" | "clear" | "below";
+  /**
+   * How the latest run compares: the first run is the baseline itself. "logged" =
+   * a later real run (v0 has no pass/fail gate); clear/below are the sample runs' redline.
+   */
+  gate: "baseline" | "logged" | "clear" | "below";
   /** The latest Dyno run, for the "Open Dyno →" line. */
   run: { id: string; date: string } | null;
 }

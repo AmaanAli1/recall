@@ -23,6 +23,14 @@ describe("the committed dyno-runs.json", () => {
     expect(REAL_RUNS.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("run 2 keeps the core 20 and adds 8 follow-ups and 5 off-topic questions", () => {
+    const second = REAL_RUNS[1];
+    expect(second.id).toBe("R2");
+    expect(second.n).toBe(20);
+    expect(second.followUps?.questions.map((q) => q.id)).toEqual(["fu-01", "fu-02", "fu-03", "fu-04", "fu-05", "fu-06", "fu-07", "fu-08"]);
+    expect(second.offTopic?.questions.map((q) => q.id)).toEqual(["off-01", "off-02", "off-03", "off-04", "off-05"]);
+  });
+
   it("starts with run 1, the baseline: 20 questions, one result each", () => {
     const [first] = REAL_RUNS;
     expect(first.id).toBe("R1");
@@ -47,6 +55,22 @@ describe("parseRuns", () => {
     ["an id that isn't R<number>", () => ({ ...run1(), id: "run-1" })],
   ])("refuses %s", (_label, make) => {
     expect(() => parseRuns([make()])).toThrow("doesn't match the Dyno script's shape");
+  });
+
+  const run2 = (): Record<string, unknown> => JSON.parse(JSON.stringify(raw[1]));
+  type Run2 = Required<RealRun>;
+
+  it.each([
+    ["follow-ups whose n doesn't match the list", (r: Run2) => void (r.followUps.n = 7)],
+    ["a follow-up rank of 0", (r: Run2) => void (r.followUps.questions[0].rankAsTyped = 0)],
+    ["a follow-up without both metrics", (r: Run2) => void delete (r.followUps.asTyped as Partial<Run2["followUps"]["asTyped"]>).mrr],
+    ["an off-topic count that disagrees with the questions", (r: Run2) => void (r.offTopic.notFound = 4)],
+    ["an off-topic question without its verdict", (r: Run2) => void delete (r.offTopic.questions[0] as Partial<Run2["offTopic"]["questions"][0]>).notFound],
+    ["rewrite tokens that aren't a number", (r: Run2) => void ((r as unknown as Record<string, unknown>).rewriteTokens = "2055")],
+  ])("refuses run 2 with %s", (_label, breakIt) => {
+    const r = run2() as unknown as Run2;
+    breakIt(r);
+    expect(() => parseRuns([raw[0], r])).toThrow("run 2 doesn't match the Dyno script's shape");
   });
 
   it("accepts a miss (rank null)", () => {
