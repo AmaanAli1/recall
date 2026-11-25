@@ -90,7 +90,7 @@ test.describe("ask", () => {
     await page.goto("/ask");
     const side = page.getByRole("complementary", { name: "Courses and chats" });
     await side.getByRole("button", { name: /^Documents/ }).click();
-    await expect(side.getByRole("link", { name: "Manage in Library →" })).toBeInViewport({ ratio: 1 });
+    await expect(side.getByRole("link", { name: "See the chapters in Library →" })).toBeInViewport({ ratio: 1 });
     const gear = side.getByRole("button", { name: "Settings", exact: true });
     await expect(gear).toBeInViewport({ ratio: 1 });
     await expect(side.getByText("Demo visitor")).toBeInViewport({ ratio: 1 });
@@ -138,28 +138,14 @@ test.describe("ask", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("switching course stays on Ask; a course with no documents points to Library and disables asking", async ({ page }) => {
-    // The only sample course is Algorithms, so make an empty course of your own first.
-    // (Client-side navigation keeps the mock's in-memory courses; a reload would not.)
-    await page.goto("/library");
-    await page.getByRole("button", { name: "New course" }).click();
-    const dialog = page.getByRole("dialog", { name: "New course" });
-    await dialog.getByRole("textbox", { name: "Course name" }).fill("My notes");
-    await dialog.getByRole("button", { name: "Create course" }).click();
-    await expect(dialog).toBeHidden();
-    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Ask" }).click();
-
+  test("Algorithms is the only course, and nothing on Ask offers to add PDFs", async ({ page }) => {
+    // Algorithms-only demo (2026-11-25): one shared, read-only course; no uploads, no courses of your own.
+    await page.goto("/ask");
     const courses = page.getByRole("complementary", { name: "Courses and chats" });
-    // Only Algorithms is a sample now (OS, Statistics and Everyday Math were removed).
-    await expect(courses.getByRole("button", { name: /Operating Systems|Statistics|Linear Algebra|Everyday Math/ })).toHaveCount(0);
-    await courses.getByRole("button", { name: /My notes/ }).click();
-
-    await expect(page).toHaveURL(/\/ask$/);
-    await expect(courses.getByRole("button", { name: /My notes/ })).toHaveAttribute("aria-current", "true");
-    // No PDFs yet, so there's nothing to ask.
-    await expect(page.getByRole("heading", { level: 1, name: "My notes has no documents yet." })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Ask about My notes" })).toBeDisabled();
-    await expect(courses.getByRole("link", { name: "DP vs greedy" })).toHaveCount(0);
+    await expect(courses.getByRole("button", { name: /Algorithms/ })).toHaveAttribute("aria-current", "true");
+    await expect(courses.getByRole("button", { name: /Operating Systems|Statistics|Linear Algebra|Everyday Math|My notes/ })).toHaveCount(0);
+    await expect(page.getByText(/Add (your own )?PDFs/)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "See its chapters in Library →" })).toHaveAttribute("href", "/library");
   });
 
   test("a chat can be renamed inline", async ({ page }) => {
@@ -211,7 +197,7 @@ test.describe("ask", () => {
     await expect(docs).toHaveAttribute("aria-expanded", "true");
     await expect(side.getByRole("list", { name: "Algorithms documents" }).getByRole("listitem")).toHaveCount(4);
     await expect(page).toHaveURL(/\/ask$/);
-    await expect(side.getByRole("link", { name: "Manage in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
+    await expect(side.getByRole("link", { name: "See the chapters in Library →" })).toHaveAttribute("href", "/library?course=00000000-0000-0000-0000-00000000c001");
     // The glance card shows the latest real Dyno run: run 2, "logged" (v0 has no pass/fail gate).
     await expect(side.getByRole("link", { name: /Open Dyno/ })).toContainText("run 2 · Nov 25");
     await expect(side.getByText("recall@5 · logged")).toBeVisible();

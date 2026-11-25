@@ -4,10 +4,12 @@
  * The demo session is kept in localStorage here; the real one is an httpOnly cookie.
  */
 import { ANSWERS, CHATS, COURSE_STARTERS, COURSES, DYNO_RUNS, NEXT_RUN } from "./mock-data";
-import { cleanCode, cleanName, COURSE_LIMIT, COURSE_LIMIT_MESSAGE, courseNameError, ownCourseCount, SAMPLE_LOCKED_MESSAGE } from "../courses";
-import type { Answer, ChatMessage, ChatSummary, Course, CourseDocument, CourseInput, DemoSession, DynoProgress, DynoRun } from "./types";
+import type { Answer, ChatMessage, ChatSummary, Course, DemoSession, DynoProgress, DynoRun } from "./types";
 
 const SESSION_KEY = "recall-demo";
+
+/** Trim and collapse whitespace (chat titles), like the real API. */
+const oneLine = (raw: string) => raw.trim().replace(/\s+/g, " ");
 const DAY_MS = 24 * 60 * 60 * 1000;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -57,21 +59,12 @@ export async function endDemoSession(): Promise<void> {
 
 // ---------- library ----------
 
-const uploaded: Record<string, CourseDocument[]> = {};
-const deletedDocs = new Set<string>();
-/** Courses for this tab's session: the samples plus any the visitor made. Edits patch this list. */
-let courses: Course[] = clone(COURSES);
-/** Documents that went through OCR: they become ready with passages. */
-const ocrDone: Record<string, CourseDocument> = {};
+/** The demo's course(s): read-only since 2026-11-25 (Algorithms only, no uploads). */
+const courses: Course[] = clone(COURSES);
 
 export async function listCourses(): Promise<Course[]> {
   await wait(120);
-  return clone(courses).map((c) => ({
-    ...c,
-    documents: [...(uploaded[c.id] ?? []), ...c.documents]
-      .filter((d) => !deletedDocs.has(d.id))
-      .map((d) => ocrDone[d.id] ?? d),
-  }));
+  return clone(courses);
 }
 
 /**
@@ -81,113 +74,9 @@ export async function listCourses(): Promise<Course[]> {
  */
 export function withMockDocuments(real: Course[]): Course[] {
   return real.map((c) => {
-    const base = courses.find((x) => x.id === c.id)?.documents ?? [];
-    const documents = [...(uploaded[c.id] ?? []), ...base]
-      .filter((d) => !deletedDocs.has(d.id))
-      .map((d) => ocrDone[d.id] ?? d);
+    const documents = courses.find((x) => x.id === c.id)?.documents ?? [];
     return { ...c, documents: clone(documents) };
   });
-}
-
-/** Same checks the real API must run (the dialog's checks are only for UX). */
-function checkInput(input: CourseInput, selfId?: string) {
-  const others = courses.filter((c) => c.id !== selfId).map((c) => c.name);
-  const err = courseNameError(input.name, others);
-  if (err) throw new Error(err);
-}
-
-export async function createCourse(input: CourseInput): Promise<Course> {
-  await wait(150);
-  if (ownCourseCount(courses) >= COURSE_LIMIT) throw new Error(COURSE_LIMIT_MESSAGE);
-  checkInput(input);
-  const course: Course = {
-    id: `c-${Date.now().toString(36)}`,
-    name: cleanName(input.name),
-    code: input.code ? cleanCode(input.code) : undefined,
-    term: input.term || undefined,
-    color: input.color,
-    sample: false,
-    documents: [],
-  };
-  courses = [...courses, course];
-  return clone(course);
-}
-
-export async function updateCourse(id: string, patch: Partial<CourseInput> & { archived?: boolean }): Promise<Course> {
-  await wait(100);
-  const cur = courses.find((c) => c.id === id);
-  if (!cur) throw new Error("That course no longer exists.");
-  if (cur.sample) throw new Error(SAMPLE_LOCKED_MESSAGE); // the database refuses this too
-  if (patch.name !== undefined) checkInput({ name: patch.name, color: cur.color }, id);
-  const next: Course = {
-    ...cur,
-    ...(patch.name !== undefined && { name: cleanName(patch.name) }),
-    ...(patch.code !== undefined && { code: cleanCode(patch.code) || undefined }),
-    ...(patch.term !== undefined && { term: patch.term || undefined }),
-    ...(patch.color !== undefined && { color: patch.color }),
-    ...(patch.archived !== undefined && { archived: patch.archived }),
-  };
-  courses = courses.map((c) => (c.id === id ? next : c));
-  return clone(next);
-}
-
-export async function deleteCourse(id: string): Promise<void> {
-  if (courses.find((c) => c.id === id)?.sample) throw new Error(SAMPLE_LOCKED_MESSAGE);
-  courses = courses.filter((c) => c.id !== id);
-}
-
-/** Reads a scanned PDF: ~60% of the time is OCR, the rest is embedding the new text. */
-export async function runOcr(courseId: string, documentId: string, onProgress?: (pct: number, stage: "ocr" | "embed") => void): Promise<CourseDocument> {
-  const doc = [...(uploaded[courseId] ?? []), ...(courses.find((c) => c.id === courseId)?.documents ?? [])].find((d) => d.id === documentId);
-  if (!doc) throw new Error("That document no longer exists.");
-  let pct = 0;
-  while (pct < 100) {
-    await wait(160);
-    pct = Math.min(100, pct + 3);
-    onProgress?.(pct, pct < 60 ? "ocr" : "embed");
-  }
-  const pages = doc.pages ?? 10;
-  const done: CourseDocument = { ...doc, status: "ready", passages: pages * 3 + 5, progress: undefined, stage: undefined, error: undefined };
-  ocrDone[documentId] = done;
-  return clone(done);
-}
-
-export async function uploadDocument(courseId: string, file: File, onProgress?: (pct: number) => void): Promise<CourseDocument> {
-  // Like the database: visitors can't add documents to a sample course.
-  if (courses.find((c) => c.id === courseId)?.sample) throw new Error(SAMPLE_LOCKED_MESSAGE);
-  let pct = 0;
-  while (pct < 100) {
-    await wait(160);
-    pct = Math.min(100, pct + 3 + (file.name.length % 3));
-    onProgress?.(pct);
-  }
-  const pages = 8 + ((file.name.length * 7) % 37);
-  // Mock only: a file with "scan" in its name acts like a scanned PDF (no text
-  // layer), so the Run OCR flow can be tried locally. Real OCR is still to build.
-  if (/scan/i.test(file.name)) {
-    const doc: CourseDocument = { id: `${courseId}-${Date.now()}`, name: file.name, pages, passages: null, status: "failed", added: "Just now", error: "No text layer. Run OCR first." };
-    uploaded[courseId] = [doc, ...(uploaded[courseId] ?? [])];
-    return doc;
-  }
-  const doc: CourseDocument = {
-    id: `${courseId}-${Date.now()}`,
-    name: file.name,
-    pages,
-    passages: pages * 3 + 7,
-    status: "ready",
-    added: "Just now",
-  };
-  uploaded[courseId] = [doc, ...(uploaded[courseId] ?? [])];
-  return doc;
-}
-
-export async function deleteDocument(_courseId: string, documentId: string): Promise<void> {
-  deletedDocs.add(documentId);
-}
-
-/** Was this document deleted in this tab? (Library deletes are mocked until visitor uploads.) */
-export function isDeletedDoc(documentId: string): boolean {
-  return deletedDocs.has(documentId);
 }
 
 // ---------- ask ----------
@@ -227,7 +116,7 @@ function exchange(question: string, answer: Answer): ChatMessage[] {
 
 export async function createChat(courseId: string, question: string, answer: Answer): Promise<ChatSummary> {
   await wait(120);
-  const t = cleanName(question);
+  const t = oneLine(question);
   const chat: ChatSummary = {
     id: `chat-${Date.now()}-${createdChats.length}`,
     courseId,
@@ -260,7 +149,7 @@ export async function listMessages(chatId: string): Promise<ChatMessage[]> {
 }
 
 export async function renameChat(id: string, title: string): Promise<void> {
-  const t = cleanName(title).slice(0, 80);
+  const t = oneLine(title).slice(0, 80);
   if (!t) throw new Error("Give the chat a name.");
   chatEdits[id] = { ...chatEdits[id], title: t };
 }

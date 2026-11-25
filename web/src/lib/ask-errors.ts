@@ -5,7 +5,7 @@ export const SESSION_ENDED = "Your demo session has ended. Start a new one from 
 
 /**
  * What the Ask page says when a real ask fails. null = the generic
- * "Recall couldn't reach your notes just now." line.
+ * "Recall couldn't reach the course's documents just now." line.
  *
  * The server's messages for 400/429/502/503/504 are written for visitors
  * (see /api/ask and FastAPI's main.py), so they're shown as they are:

@@ -62,7 +62,7 @@ export function Hero() {
       >
         <span aria-hidden="true" className="absolute -bottom-8 -top-8 left-0 w-px bg-margin" />
         <h1 id="hero-h" className="m-0 text-[66px] font-normal leading-[1.05] tracking-[-0.038em]">
-          <span className={`${styles.rise} block`}>Ask your notes.</span>
+          <span className={`${styles.rise} block`}>Ask the textbook.</span>
           <span className={`${styles.rise} block`} style={{ animationDelay: "70ms" }}>
             Get answers <span aria-hidden="true" className="font-mono font-normal tracking-[-0.06em] text-red">[</span>
             <span className={styles.swipe} style={{ backgroundImage: hl(56, 92), animationDelay: "520ms" }}>cited</span>
@@ -71,7 +71,7 @@ export function Hero() {
           <span className={`${styles.rise} block`} style={{ animationDelay: "140ms" }}>to the page.</span>
         </h1>
         <p className={`${styles.rise} mb-0 mt-7 max-w-[34em] text-lg leading-[1.6] text-ink-2`} style={{ animationDelay: "210ms" }}>
-          Recall reads your lecture PDFs, scores every passage against your question, and shows the exact page each answer came from.
+          Recall reads a real textbook, scores every passage against your question, and shows the exact page each answer came from.
         </p>
         <div className={`${styles.rise} mt-9 flex flex-wrap items-center gap-5`} style={{ animationDelay: "280ms" }}>
           <DemoLink href={href} className="btn btn-red inline-flex items-center gap-3 rounded-[5px] py-[11px] pl-5 pr-[11px] text-base font-medium">

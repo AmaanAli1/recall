@@ -113,16 +113,6 @@ describe("listCourses with real answers", () => {
     expect(mine.documents).toEqual([]); // no real PDFs yet: still the mock's (empty) list
   });
 
-  it("keeps a real chapter hidden after it's deleted in this tab", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, realCourses)));
-    const api = await client({ sessions: true, chats: true, ask: true });
-
-    await api.deleteDocument(ALGO, "erickson-8");
-    const [algo] = await api.listCourses();
-
-    expect(algo.documents.map((d) => d.id)).toEqual(["erickson-1", "erickson-3", "erickson-4"]);
-  });
-
   it("mock mode lists the same Erickson chapters as the real site (local matches the Preview)", async () => {
     const { listCourses } = await client({});
     const algo = (await listCourses()).find((c) => c.id === ALGO);

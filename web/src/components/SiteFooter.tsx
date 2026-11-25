@@ -15,7 +15,7 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
         <div className="min-w-0 flex-[2_1_320px]">
           <Logo size="lg" />
           <p className="mt-3.5 max-w-[26em] text-[15px] leading-relaxed text-ink-2">
-            An AI study assistant that answers from your lecture notes and cites the page, with every change measured on the dyno.
+            An AI study assistant that answers from a real textbook and cites the page, with every change measured on the dyno.
           </p>
           <BuildStatus />
         </div>
@@ -25,6 +25,7 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
             <li><Link href={`${base}#pipeline`} className="lnk-hl text-ink-2">How it works</Link></li>
             <li><Link href={`${base}#spec`} className="lnk-hl text-ink-2">Spec sheet</Link></li>
             <li><Link href="/dyno" className="lnk-hl text-ink-2">Dyno results</Link></li>
+            <li><Link href={`${base}#about-this-demo`} className="lnk-hl text-ink-2">About this demo</Link></li>
             <li><DemoLink className="lnk-hl text-ink-2">Try the demo</DemoLink></li>
           </ul>
         </nav>

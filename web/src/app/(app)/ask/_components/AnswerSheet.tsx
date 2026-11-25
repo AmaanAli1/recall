@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { Answer } from "@/lib/api";
 import type { Starter } from "@/lib/api/mock-data";
@@ -58,7 +57,7 @@ export function AnswerSheet(props: {
           <div className={s.swapIn} role="alert">
             <h1 className={`${s.h1} max-w-[24em]`}>{props.pendingQ}</h1>
             <p className="m-0 text-[15px] leading-9 text-ink-2">
-              Recall couldn’t reach your notes just now.{" "}
+              Recall couldn’t reach the course’s documents just now.{" "}
               <button type="button" className="lnk lnk-hl border-0 bg-transparent p-0 text-ink" onClick={props.onRetry}>
                 Try again
               </button>
@@ -129,7 +128,7 @@ function TurnBlock(
       {turn.status === "error" && (
         <div className={s.swapIn} role="alert">
           <p className="m-0 text-[15px] leading-9 text-ink-2">
-            {turn.errorMsg ?? "Recall couldn’t reach your notes just now."}{" "}
+            {turn.errorMsg ?? "Recall couldn’t reach the course’s documents just now."}{" "}
             {last && (
               <button type="button" className="lnk lnk-hl border-0 bg-transparent p-0 text-ink" onClick={props.onRetry}>
                 Try again
@@ -145,7 +144,7 @@ function TurnBlock(
 
 /** Shown wherever a course's answers can't be real yet. */
 const SAMPLE_ONLY_TEXT =
-  "This course’s PDFs aren’t loaded yet. Only Algorithms has real documents in this demo for now, so questions here come back as not found.";
+  "This course’s PDFs aren’t loaded, so questions here come back as not found. The demo’s course is Algorithms.";
 
 function SampleOnlyNote() {
   return <p className="m-0 mt-3 max-w-[40em] text-sm leading-7 text-ink-3">{SAMPLE_ONLY_TEXT}</p>;
@@ -169,10 +168,7 @@ function Starters({
       <div className={s.swapIn}>
         <h1 className={`${s.h1} max-w-[22em]`}>{courseName} has no documents yet.</h1>
         <p className="m-0 max-w-[40em] text-[15px] leading-9 text-ink-2">
-          Recall only answers from your own notes, so add a lecture PDF first.
-        </p>
-        <p className="m-0 mt-9 text-[15px] leading-9">
-          <Link href="/library" className="lnk lnk-hl text-ink">Add PDFs to {courseName} in Library →</Link>
+          Recall only answers from a course’s documents, and none are loaded here.
         </p>
       </div>
     );
@@ -183,7 +179,7 @@ function Starters({
       <p className="m-0 max-w-[40em] text-[15px] leading-9 text-ink-2">
         {sampleOnly
           ? SAMPLE_ONLY_TEXT
-          : `Answers come only from the ${docCount != null ? `${docCount} ` : ""}lecture PDFs in this course, each claim cited to its page.`}
+          : `Answers come only from the ${docCount != null ? `${docCount} ` : ""}PDFs in this course, each claim cited to its page.`}
       </p>
       {/* No real documents here, so a starter could only come back not found. */}
       {!sampleOnly && (
@@ -200,7 +196,7 @@ function Starters({
         </>
       )}
       <p className="m-0 mt-9 text-sm leading-9 text-ink-2">
-        Or type your own below. Recall says so when your notes don’t cover it.
+        Or type your own below. Recall says so when the book doesn’t cover it.
       </p>
     </div>
   );
