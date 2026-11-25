@@ -135,6 +135,38 @@ describe("AnswerSheet: typing a new answer in", () => {
   });
 });
 
+describe("AnswerSheet: rewritten follow-ups", () => {
+  const rewritten = (extra: Partial<Answer> = {}) =>
+    turn(1, "Why does it fail?", {
+      answer: answer({
+        question: "Why does it fail?",
+        searchedFor: "Why does Dijkstra's algorithm fail with negative edges?",
+        timing: { rewrite: 0.5, embed: 0.4, search: 0.1, rerank: 0, generate: 2.1 },
+        ...extra,
+      }),
+    });
+
+  it("shows what was searched, and keeps the visitor's own words as the question", () => {
+    render(<AnswerSheet {...base} view="thread" turns={[rewritten()]} activeKey={1} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Why does it fail?" })).toBeInTheDocument();
+    const line = screen.getByText(/^Searched for/);
+    expect(line).toHaveTextContent("Searched for Why does Dijkstra's algorithm fail with negative edges?");
+  });
+
+  it("puts the rewrite first in the timing bar, and counts it in the total", () => {
+    render(<AnswerSheet {...base} view="thread" turns={[rewritten()]} activeKey={1} />);
+    const labels = within(screen.getByRole("group", { name: "Time spent per step" })).getAllByText(/^(rewrite|embed|search|generate)/);
+    expect(labels.map((l) => l.textContent?.split(/\s/)[0])).toEqual(["rewrite", "embed", "search", "generate"]);
+    expect(screen.getByText(/searched 4 documents in 3\.1\s?s/)).toBeInTheDocument(); // 0.5 + 0.4 + 0.1 + 2.1
+  });
+
+  it("a first question (or an answer saved before rewriting) shows neither", () => {
+    render(<AnswerSheet {...base} view="thread" turns={[turn(1, "Q?")]} activeKey={1} />);
+    expect(screen.queryByText(/^Searched for/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole("group", { name: "Time spent per step" })).queryByText(/rewrite/)).not.toBeInTheDocument();
+  });
+});
+
 describe("AnswerSheet: other states", () => {
   it("leaves steps that took no time out of the timing bar", () => {
     render(<AnswerSheet {...base} view="thread" turns={[turn(1, "Q?")]} activeKey={1} />);

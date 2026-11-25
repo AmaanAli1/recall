@@ -22,6 +22,7 @@ from recall_api.answer import ModelAnswer, ModelClaim
 from recall_api.db import SupabaseClient
 from recall_api.ingest.embed import DIMENSIONS
 from recall_api.ratelimit import RateLimiter
+from recall_api.rewrite import Rewrite
 from recall_api.settings import Settings
 
 INTERNAL = "internal-test-key"
@@ -90,6 +91,9 @@ class FakeOpenAI:
             follow_ups=["What is a recurrence?", "Why bottom-up?"],
         )
         self.error: Exception | None = None
+        # What the rewriter (rewrite.py) returns for a follow-up.
+        self.rewritten = "Why does Dijkstra's algorithm fail with negative edges?"
+        self.rewrite_error: Exception | None = None
         self.embed_calls: list[list[str]] = []
         self.parse_calls: list[dict] = []
         self.embeddings = SimpleNamespace(create=self._embed)
@@ -104,6 +108,16 @@ class FakeOpenAI:
 
     def _parse(self, **kwargs):
         self.parse_calls.append(kwargs)
+        # The rewrite call asks for a Rewrite; the answer call
+        # for a ModelAnswer. Same method, told apart here.
+        if kwargs["text_format"] is Rewrite:
+            if self.rewrite_error:
+                raise self.rewrite_error
+            return SimpleNamespace(
+                output_parsed=Rewrite(question=self.rewritten),
+                usage=SimpleNamespace(input_tokens=150, output_tokens=20),
+                status="completed",
+            )
         if self.error:
             raise self.error
         return SimpleNamespace(
@@ -276,7 +290,10 @@ def test_a_real_looking_answer_end_to_end(fakes):
     assert [d["page"] for d in answer["dropped"]] == [30, 40, 50]
     assert answer["followUps"] == ["What is a recurrence?", "Why bottom-up?"]
     assert "notFound" not in answer
-    assert set(answer["timing"]) == {"embed", "search", "rerank", "generate"}
+    assert set(answer["timing"]) == {"rewrite", "embed", "search", "rerank", "generate"}
+    # A first question: no rewrite, so no "Searched for".
+    assert answer["timing"]["rewrite"] == 0 and "searchedFor" not in answer
+    assert len(fakes.ai.parse_calls) == 1
 
     # The model saw only the best 6 passages, and the rules.
     sent = fakes.ai.parse_calls[0]
@@ -345,3 +362,78 @@ def test_answer_still_returned_if_charging_fails(fakes):
 def test_health_still_needs_nothing(fakes):
     main.app.dependency_overrides = {}
     assert TestClient(main.app).get("/health").json() == {"ok": True}
+
+
+# ---------- follow-ups: query rewriting (rewrite.py) ----------
+
+HISTORY = [
+    {
+        "question": "How does Dijkstra's algorithm work?",
+        "answer": "It repeatedly takes the closest unvisited vertex.",
+    }
+]
+FOLLOW_UP = {"courseId": COURSE, "question": "Why does it fail with negative edges?"}
+
+
+def test_a_follow_up_is_rewritten_before_search_and_answer(fakes):
+    response = ask(fakes, body={**FOLLOW_UP, "history": HISTORY})
+    assert response.status_code == 200
+    data = response.json()
+    answer = data["answer"]
+
+    # Two model calls: the rewrite first, then the answer.
+    rewrite_call, answer_call = fakes.ai.parse_calls
+    assert rewrite_call["text_format"] is Rewrite
+    assert "How does Dijkstra's algorithm work?" in rewrite_call["input"]
+    assert rewrite_call["input"].endswith("Why does it fail with negative edges?")
+    # Search and the answer model both get the rewritten question...
+    assert fakes.ai.embed_calls == [[fakes.ai.rewritten]]
+    assert answer_call["input"].endswith(f"Question: {fakes.ai.rewritten}")
+    # ...but the visitor's own words stay the question, with the
+    # rewrite shown alongside.
+    assert answer["question"] == "Why does it fail with negative edges?"
+    assert answer["searchedFor"] == fakes.ai.rewritten
+    assert "rewrite" in answer["timing"]
+
+    # Charged for the rewrite too: 150 + 20 + embedding 7 + 2000 + 300.
+    assert data["usage"]["tokens"] == 2477
+
+
+def test_a_failed_rewrite_falls_back_to_the_original_question(fakes):
+    fakes.ai.rewrite_error = openai_error(openai.InternalServerError, 500, None)
+    response = ask(fakes, body={**FOLLOW_UP, "history": HISTORY})
+    assert response.status_code == 200
+    answer = response.json()["answer"]
+    assert fakes.ai.embed_calls == [["Why does it fail with negative edges?"]]
+    assert "searchedFor" not in answer
+    assert answer["claims"]  # still answered
+    assert response.json()["usage"]["tokens"] == 2307  # no rewrite tokens
+
+
+def test_an_unchanged_rewrite_shows_no_searched_for(fakes):
+    fakes.ai.rewritten = "why does it fail with   negative edges?"
+    answer = ask(fakes, body={**FOLLOW_UP, "history": HISTORY}).json()["answer"]
+    assert "searchedFor" not in answer
+    assert fakes.ai.embed_calls == [["Why does it fail with negative edges?"]]
+
+
+def test_a_rewritten_follow_up_can_still_be_not_found(fakes):
+    fakes.supabase.rows = [row(i, 0.1) for i in range(1, 4)]
+    answer = ask(fakes, body={**FOLLOW_UP, "history": HISTORY}).json()["answer"]
+    assert answer["notFound"] is True
+    # What was searched is still shown, so "not found" is explainable.
+    assert answer["searchedFor"] == fakes.ai.rewritten
+
+
+@pytest.mark.parametrize(
+    "history",
+    [
+        [{"question": "  ", "answer": "x"}],  # blank question
+        [{"question": "Q?"}],  # no answer field
+        [{"question": "Q?", "answer": "A"}] * 11,  # too many turns
+        "How does it work?",  # not a list
+    ],
+)
+def test_bad_history_is_422_before_any_work(fakes, history):
+    assert ask(fakes, body={**FOLLOW_UP, "history": history}).status_code == 422
+    assert fakes.ai.parse_calls == [] and fakes.ai.embed_calls == []

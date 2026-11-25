@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PASS_THROUGH, answerService, answerText, parseAsk } from "@/lib/ask";
+import { HISTORY_MESSAGES, PASS_THROUGH, answerService, answerText, parseAsk, toHistory, type Turn } from "@/lib/ask";
 import type { Answer, ChatRecord } from "@/lib/api/types";
 import { titleFromQuestion } from "@/lib/chats";
 import { apiError } from "@/lib/supabase/errors";
@@ -21,7 +21,9 @@ export const maxDuration = 60;
  * The browser's only way to ask. Step by step:
  *   1. Check the body and who's asking (the session cookie).
  *   2. Follow-up? Make sure the chat is the visitor's BEFORE paying for
- *      an answer (someone else's chat → 404, as in /api/chats).
+ *      an answer (someone else's chat → 404, as in /api/chats), and load
+ *      its last few turns: FastAPI uses them to rewrite a vague follow-up
+ *      ("why does that fail?") into a question search can use.
  *   3. Ask FastAPI, server to server, with the internal key and the
  *      visitor's own token. FastAPI calls Supabase as the visitor, so RLS
  *      decides what it can search, and it charges the visitor's budget.
@@ -56,6 +58,22 @@ export async function POST(request: Request) {
     chat = toChatRecord(row as ChatRow);
   }
 
+  // The chat's history comes from the database, never from the browser, so
+  // nobody can hand the rewriter a made-up conversation. Newest first (by id:
+  // a question and its answer share a created_at), then turned around.
+  let history: Turn[] = [];
+  if (chat) {
+    const { data: rows, error } = await supabase
+      .from("messages")
+      .select("role, content")
+      .eq("chat_id", chat.id)
+      .order("id", { ascending: false })
+      .limit(HISTORY_MESSAGES);
+    // Without history the follow-up is still answered, just not rewritten.
+    if (error) console.error("[api] couldn't load the chat's history", error);
+    else history = toHistory((rows ?? []) as { role: string; content: string }[]);
+  }
+
   // 3. Ask the answer service.
   let answer: Answer;
   try {
@@ -66,7 +84,8 @@ export async function POST(request: Request) {
         "X-Recall-Internal": service.key,
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ courseId, question }),
+      // history only when there is some: a first question sends none.
+      body: JSON.stringify({ courseId, question, ...(history.length ? { history } : {}) }),
       signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
       cache: "no-store",
     });

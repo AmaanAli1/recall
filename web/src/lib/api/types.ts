@@ -84,11 +84,13 @@ export interface Answer {
   sources: Source[];
   /** Weak matches the reranker dropped. */
   dropped: { file: string; page: number; score: number }[];
-  /** Seconds per pipeline step, for the timing bar. */
-  timing: { embed: number; search: number; rerank: number; generate: number };
+  /** Seconds per pipeline step, for the timing bar. `rewrite` is follow-ups only (and missing from older answers). */
+  timing: { rewrite?: number; embed: number; search: number; rerank: number; generate: number };
   followUps: string[];
   /** True when the course's documents don't answer the question (no claims, no sources). */
   notFound?: boolean;
+  /** A follow-up rewritten to stand alone: what search actually used (FastAPI's rewrite.py). */
+  searchedFor?: string;
 }
 
 export interface ChatSummary {
