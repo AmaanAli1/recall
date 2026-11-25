@@ -10,7 +10,7 @@ const STAGE_H = 470;
 const PAGES = [
   { name: "Week6.pdf", top: 30 },
   { name: "Slides_W6.pdf", top: 140 },
-  { name: "CLRS_15.pdf", top: 250 },
+  { name: "Reading_W6.pdf", top: 250 },
   { name: "Notes.pdf", top: 360 },
 ];
 

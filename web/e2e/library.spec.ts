@@ -29,7 +29,7 @@ test.describe("library", () => {
     await openLibrary(page);
     const algo = page.getByRole("tab", { name: /Algorithms/ });
     await expect(algo).toHaveAttribute("aria-selected", "true");
-    await expect(algo).toContainText("[6]");
+    await expect(algo).toContainText("[4]"); // the 4 Erickson chapters, as on the real site
     // Exactly the two sample courses.
     await expect(page.getByRole("tab")).toHaveCount(2);
     await expect(page.getByRole("tab", { name: /Everyday Math/ })).toContainText("[0]");
@@ -83,12 +83,12 @@ test.describe("library", () => {
 
   test("row menu offers only what works on a sample document, and Escape closes it", async ({ page }) => {
     await openLibrary(page);
-    const more = page.getByRole("button", { name: "More actions for Week6_DynamicProgramming.pdf" });
+    const more = page.getByRole("button", { name: "More actions for Erickson_Ch3_DynamicProgramming.pdf" });
     await more.click();
     await expect(more).toHaveAttribute("aria-expanded", "true");
-    const menu = page.getByRole("menu", { name: "More actions for Week6_DynamicProgramming.pdf" });
-    // Shared sample documents: ask about the course, nothing that edits them.
-    await expect(menu.getByRole("menuitem")).toHaveText(["Ask about this course"]);
+    const menu = page.getByRole("menu", { name: "More actions for Erickson_Ch3_DynamicProgramming.pdf" });
+    // Shared sample documents: ask about the course or open the author's PDF, nothing that edits them.
+    await expect(menu.getByRole("menuitem")).toHaveText(["Ask about this course", "Open the original PDF"]);
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(more).toHaveAttribute("aria-expanded", "false");
@@ -260,7 +260,7 @@ test.describe("library", () => {
     await expect(slip).toContainText("Algorithms is shared by every visitor, so PDFs can’t be added to it.");
     await expect(slip.getByRole("listitem")).toHaveText("Week7_Graphs.pdfNot added");
     await expect(page.getByRole("row", { name: /Week7_Graphs\.pdf/ })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: /Algorithms/ })).toContainText("[6]");
+    await expect(page.getByRole("tab", { name: /Algorithms/ })).toContainText("[4]");
     await slip.getByRole("button", { name: "Got it" }).click();
     await expect(slip).toBeHidden();
 
@@ -308,6 +308,9 @@ test.describe("library", () => {
 
   test("Run OCR reads the scan, then the document becomes Ready", async ({ page }) => {
     await openLibrary(page);
+    await makeOwnCourse(page, "My notes");
+    // The mock treats a file named like a scan as a PDF with no text layer.
+    await fileInput(page).setInputFiles([file("Midterm_Review_Scan.pdf", "application/pdf")]);
     const row = page.getByRole("row", { name: /Midterm_Review_Scan\.pdf/ });
     await row.getByRole("button", { name: "Run OCR on Midterm_Review_Scan.pdf" }).click();
     await expect(row).toContainText("Reading scanned pages (OCR)…");
@@ -317,10 +320,10 @@ test.describe("library", () => {
   test("the last row's menu opens fully on screen", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await openLibrary(page);
-    const more = page.getByRole("button", { name: "More actions for Midterm_Review_Scan.pdf" });
+    const more = page.getByRole("button", { name: "More actions for Erickson_Ch8_ShortestPaths.pdf" });
     await more.scrollIntoViewIfNeeded();
     await more.click();
-    const box = await page.getByRole("menu", { name: "More actions for Midterm_Review_Scan.pdf" }).boundingBox();
+    const box = await page.getByRole("menu", { name: "More actions for Erickson_Ch8_ShortestPaths.pdf" }).boundingBox();
     expect(box).not.toBeNull();
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(720);
     expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);

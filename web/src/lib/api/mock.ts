@@ -162,6 +162,13 @@ export async function uploadDocument(courseId: string, file: File, onProgress?: 
     onProgress?.(pct);
   }
   const pages = 8 + ((file.name.length * 7) % 37);
+  // Mock only: a file with "scan" in its name acts like a scanned PDF (no text
+  // layer), so the Run OCR flow can be tried locally. Real OCR is still to build.
+  if (/scan/i.test(file.name)) {
+    const doc: CourseDocument = { id: `${courseId}-${Date.now()}`, name: file.name, pages, passages: null, status: "failed", added: "Just now", error: "No text layer. Run OCR first." };
+    uploaded[courseId] = [doc, ...(uploaded[courseId] ?? [])];
+    return doc;
+  }
   const doc: CourseDocument = {
     id: `${courseId}-${Date.now()}`,
     name: file.name,

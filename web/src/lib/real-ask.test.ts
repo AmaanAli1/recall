@@ -124,13 +124,17 @@ describe("listCourses with real answers", () => {
     expect(algo.documents.map((d) => d.id)).toEqual(["erickson-1", "erickson-3", "erickson-4"]);
   });
 
-  it("keeps the mock documents when real answers are off", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, realCourses)));
-    const { listCourses } = await client({ sessions: true, chats: true, ask: false });
+  it("mock mode lists the same Erickson chapters as the real site (local matches the Preview)", async () => {
+    const { listCourses } = await client({});
+    const algo = (await listCourses()).find((c) => c.id === ALGO);
 
-    const [algo] = await listCourses();
-
-    expect(algo.documents.map((d) => d.name)).toContain("Week6_DynamicProgramming.pdf");
+    expect(algo?.documents.map((d) => d.name)).toEqual([
+      "Erickson_Ch1_Recursion.pdf",
+      "Erickson_Ch3_DynamicProgramming.pdf",
+      "Erickson_Ch4_GreedyAlgorithms.pdf",
+      "Erickson_Ch8_ShortestPaths.pdf",
+    ]);
+    expect(algo?.documents.every((d) => d.status === "ready" && d.sourceUrl)).toBe(true);
   });
 });
 
