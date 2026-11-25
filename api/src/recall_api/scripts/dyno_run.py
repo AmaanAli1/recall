@@ -12,6 +12,15 @@ match_chunks() for the top 10 chunks of each, scores
 recall@5 and MRR, and APPENDS the run to
 web/src/data/dyno-runs.json, which /dyno reads.
 
+Three groups, scored separately and never averaged together:
+- core (the original 20): `metrics` + `questions`, so every
+  run stays comparable with run 1 (the baseline);
+- follow-ups: each is rewritten with the API's own
+  rewrite_question(), then scored twice, as typed and
+  rewritten (before/after from the same run) -> `followUps`;
+- off-topic: "correctly not found" when the best match is
+  below the API's not-found threshold -> `offTopic`.
+
 Why the admin connection, read-only (decision DV4): the
 sample course belongs to no visitor, and signing in as a
 throwaway visitor on every run would leave anonymous users
@@ -29,11 +38,13 @@ from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
-from recall_api.dyno.golden import GoldenError, GoldenSet, load_golden
+from recall_api.dyno.golden import GoldenError, GoldenSet, Question, Turn, load_golden
 from recall_api.dyno.metrics import bootstrap_ci, first_hit_rank, hit_at_k, reciprocal_rank
 from recall_api.ingest.chunk import MAX_TOKENS, OVERLAP_TOKENS, TARGET_TOKENS
 from recall_api.ingest.embed import MODEL as EMBED_MODEL
 from recall_api.ingest.embed import EmbeddingsClient, embed_texts, make_client
+from recall_api.rewrite import Turn as RewriteTurn
+from recall_api.rewrite import rewrite_question
 from recall_api.scripts.ingest_samples import (
     API_DIR,
     EMBED_PRICE_PER_MILLION,
@@ -43,6 +54,7 @@ from recall_api.scripts.ingest_samples import (
     project_ref,
     vector_literal,
 )
+from recall_api.settings import Settings
 
 REPO_DIR = API_DIR.parent
 GOLDEN_PATH = REPO_DIR / "dyno" / "golden.toml"
@@ -52,11 +64,20 @@ TOP_K = 10  # chunks retrieved per question (MRR looks this deep)
 RECALL_K = 5  # recall@5
 KEEP_TOP = 5  # retrieved chunks saved per question, to study misses
 
+# Read from the API's own settings (their defaults), so Dyno
+# measures what /v1/answer runs. If a Lambda overrides one
+# with an env var, the run's setup says which value Dyno used.
+ANSWER_MODEL: str = Settings.model_fields["openai_answer_model"].default
+NOT_FOUND_BELOW: float = Settings.model_fields["answer_min_similarity"].default
+
 # One retrieved chunk: (document name, page, similarity).
 Hit = tuple[str, int, float]
 # "Give me the top k chunks of this course for this vector."
 # The real one queries Postgres; tests pass a fake.
 Search = Callable[[list[float], str, int], list[Hit]]
+# "Rewrite this follow-up": (rewritten or None, tokens used).
+# The real one calls rewrite_question(); tests pass a fake.
+Rewriter = Callable[[tuple[Turn, ...], str], tuple[str | None, int]]
 
 MATCH_SQL = """
 select document_name, page, similarity
@@ -91,6 +112,87 @@ def score(golden: GoldenSet, vectors: list[list[float]], search: Search) -> list
     return results
 
 
+def _top(hits: list[Hit]) -> list[dict]:
+    return [
+        {"file": document, "page": page, "score": round(similarity, 3)}
+        for document, page, similarity in hits[:KEEP_TOP]
+    ]
+
+
+def score_follow_ups(
+    questions: list[Question],
+    typed: list[list[float]],
+    rewritten: list[list[float]],
+    rewrites: list[str | None],
+    course_id: str,
+    search: Search,
+) -> list[dict]:
+    """Each follow-up ranked twice: as the student typed it, and rewritten.
+
+    `rank` is the rewritten one, because that's what the API
+    searches with now; `rankAsTyped` is the "before".
+    """
+    results = []
+    for q, typed_vector, rewritten_vector, text in zip(
+        questions, typed, rewritten, rewrites, strict=True
+    ):
+        typed_hits = search(typed_vector, course_id, TOP_K)
+        hits = search(rewritten_vector, course_id, TOP_K)
+        results.append(
+            {
+                "id": q.id,
+                "rankAsTyped": first_hit_rank(q, [(d, p) for d, p, _ in typed_hits]),
+                "rank": first_hit_rank(q, [(d, p) for d, p, _ in hits]),
+                "rewritten": text,  # None (null) = kept as typed
+                "top": _top(hits),
+            }
+        )
+    return results
+
+
+def score_off_topic(
+    questions: list[Question], vectors: list[list[float]], course_id: str, search: Search
+) -> list[dict]:
+    """Off-topic questions: is the best match below the not-found threshold?
+
+    The same test /v1/answer makes before calling the answer
+    model, so "notFound" here means "the visitor would be
+    told it's not in the course".
+    """
+    results = []
+    for q, vector in zip(questions, vectors, strict=True):
+        hits = search(vector, course_id, TOP_K)
+        best = hits[0][2] if hits else 0.0
+        results.append(
+            {
+                "id": q.id,
+                "bestScore": round(best, 3),
+                "notFound": best < NOT_FOUND_BELOW,
+                "top": _top(hits),
+            }
+        )
+    return results
+
+
+def summarize_off_topic(results: list[dict], core: list[dict]) -> dict:
+    """How many off-topic questions were "not found", and the margin.
+
+    highestScore = the off-topic question that came closest
+    to being answered; lowestCoreScore = the real question
+    whose best match was weakest. A threshold between the two
+    separates them; if they overlap, no threshold can.
+    """
+    core_best = [r["top"][0]["score"] for r in core if r["top"]]
+    return {
+        "n": len(results),
+        "threshold": NOT_FOUND_BELOW,
+        "notFound": sum(1 for r in results if r["notFound"]),
+        "highestScore": max((r["bestScore"] for r in results), default=0.0),
+        "lowestCoreScore": min(core_best, default=0.0),
+        "questions": results,
+    }
+
+
 def summarize(results: list[dict]) -> dict:
     """recall@5 and MRR with their 95% intervals, rounded for the page."""
     ranks = [r["rank"] for r in results]
@@ -117,9 +219,19 @@ def setup() -> dict:
         "retrieval": "cosine similarity (pgvector)",
         "topK": TOP_K,
         "reranker": "none",
-        "rewriting": "none",
+        "rewriting": f"{ANSWER_MODEL}, follow-ups only",
         "embedModel": EMBED_MODEL,
     }
+
+
+def documents_needed(golden: GoldenSet) -> set[str]:
+    """The documents the golden set's right pages are in.
+
+    Off-topic questions have no document (""), so they're
+    left out: otherwise "" would count as a document that
+    isn't loaded, and every run would refuse.
+    """
+    return {q.document for q in golden.questions if q.kind != "off_topic"}
 
 
 def git_commit() -> str:
@@ -163,24 +275,91 @@ def run(
     *,
     client: EmbeddingsClient,
     search: Search,
+    rewrite: Rewriter,
     change: str,
     runs_path: Path,
     out: Callable[[str], None] = print,
 ) -> dict:
     start = time.perf_counter()
-    # One embedding call for all questions, and the SAME
-    # helper and model the live /v1/answer uses for a
-    # question (no "name · page" prefix: that's for passages).
-    embedded = embed_texts(client, [q.question for q in golden.questions])
-    results = score(golden, embedded.vectors, search)
-    metrics = summarize(results)
+    core = [q for q in golden.questions if q.kind == "core"]
+    follow_ups = [q for q in golden.questions if q.kind == "follow_up"]
+    off_topic = [q for q in golden.questions if q.kind == "off_topic"]
 
+    # 1. Rewrite each follow-up, exactly as the API would.
+    rewrites: list[str | None] = []
+    rewrite_tokens = 0
+    for q in follow_ups:
+        text, used = rewrite(q.history, q.question)
+        rewrites.append(text)
+        rewrite_tokens += used
+
+    # 2. One embedding call for everything, and the SAME helper
+    #    and model the live /v1/answer uses for a question (no
+    #    "name · page" prefix: that's for passages). The order
+    #    of `texts` is the order the vectors come back in.
+    texts = (
+        [q.question for q in core]
+        + [q.question for q in follow_ups]
+        + [text or q.question for q, text in zip(follow_ups, rewrites, strict=True)]
+        + [q.question for q in off_topic]
+    )
+    embedded = embed_texts(client, texts)
+    vectors = iter(embedded.vectors)
+
+    def take(n: int) -> list[list[float]]:
+        return [next(vectors) for _ in range(n)]
+
+    # 3. Score each group on its own.
+    results = score(GoldenSet(golden.course_id, core), take(len(core)), search)
+    metrics = summarize(results)
+    typed_vectors, rewritten_vectors = take(len(follow_ups)), take(len(follow_ups))
+    fu_results = score_follow_ups(
+        follow_ups, typed_vectors, rewritten_vectors, rewrites, golden.course_id, search
+    )
+    off_results = score_off_topic(off_topic, take(len(off_topic)), golden.course_id, search)
+
+    def line(label: str, m: dict) -> str:
+        return f"{label}: {m['value']:.2f} (95% interval {m['low']:.2f}-{m['high']:.2f})"
+
+    def shown(rank: int | None) -> str:
+        return f"rank {rank}" if rank else "MISS"
+
+    out(f"Core ({len(results)}):")
     for r in results:
         found = f"rank {r['rank']}" if r["rank"] else "MISS (not in top 10)"
         out(f"  {r['id']:<10} {found}")
     for name, label in (("recall5", "recall@5"), ("mrr", "MRR")):
-        m = metrics[name]
-        out(f"{label}: {m['value']:.2f} (95% interval {m['low']:.2f}-{m['high']:.2f})")
+        out(line(label, metrics[name]))
+
+    extra: dict = {}
+    if fu_results:
+        as_typed = summarize([{"rank": r["rankAsTyped"]} for r in fu_results])
+        rewritten = summarize(fu_results)
+        out(f"Follow-ups ({len(fu_results)}): as typed -> rewritten")
+        for r in fu_results:
+            ranks = f"{shown(r['rankAsTyped'])} -> {shown(r['rank'])}"
+            out(f"  {r['id']:<10} {ranks}  {r['rewritten']!r}")
+        out(line("  recall@5 as typed", as_typed["recall5"]))
+        out(line("  recall@5 rewritten", rewritten["recall5"]))
+        out(line("  MRR as typed", as_typed["mrr"]))
+        out(line("  MRR rewritten", rewritten["mrr"]))
+        extra["followUps"] = {
+            "n": len(fu_results),
+            "asTyped": as_typed,
+            "rewritten": rewritten,
+            "questions": fu_results,
+        }
+    if off_results:
+        off = summarize_off_topic(off_results, results)
+        out(f"Off-topic ({off['n']}): not found when the best match < {off['threshold']}")
+        for r in off_results:
+            verdict = "not found (right)" if r["notFound"] else "WOULD ANSWER"
+            out(f"  {r['id']:<10} best {r['bestScore']:.3f}  {verdict}")
+        out(
+            f"  {off['notFound']}/{off['n']} not found; highest off-topic "
+            f"{off['highestScore']:.3f} vs weakest core {off['lowestCoreScore']:.3f}"
+        )
+        extra["offTopic"] = off
 
     saved = append_run(
         runs_path,
@@ -191,10 +370,15 @@ def run(
             "n": len(results),
             "metrics": metrics,
             "setup": setup(),
+            # Embedding tokens and their cost. Rewrite tokens are
+            # listed on their own: the answer model's price isn't
+            # in the code, and a guessed cost would be made up.
             "tokens": embedded.tokens,
             "costUsd": round(embedded.tokens * EMBED_PRICE_PER_MILLION / 1_000_000, 6),
+            "rewriteTokens": rewrite_tokens,
             "durationS": round(time.perf_counter() - start, 1),
-            "questions": results,
+            "questions": results,  # core only: n and metrics are about these
+            **extra,
         },
     )
     out(f"Saved {saved['id']} to {runs_path}.")
@@ -217,7 +401,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Golden set: {len(golden.questions)} questions.")
         if args.dry_run:
             for q in golden.questions:
-                print(f"  {q.id:<10} {q.document} p. {', '.join(map(str, q.pages))}")
+                if q.kind == "off_topic":
+                    print(f"  {q.id:<10} off-topic: expect not found (< {NOT_FOUND_BELOW})")
+                    continue
+                pages = ", ".join(map(str, q.pages))
+                after = f" (after: {q.history[-1].question!r})" if q.history else ""
+                print(f"  {q.id:<10} {q.document} p. {pages}{after}")
             return 0
 
         # Every run says what it tested, so the runs table
@@ -245,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
             # A golden document missing from the database would
             # score 0 for "no reason": refuse instead.
             rows = conn.execute(READY_DOCUMENTS_SQL, (golden.course_id,)).fetchall()
-            missing = {q.document for q in golden.questions} - {name for (name,) in rows}
+            missing = documents_needed(golden) - {name for (name,) in rows}
             if missing:
                 print(f"Refusing: not loaded in {target}: {', '.join(sorted(missing))}.")
                 return 1
@@ -254,10 +443,17 @@ def main(argv: list[str] | None = None) -> int:
                 return conn.execute(MATCH_SQL, (vector_literal(vector), course_id, k)).fetchall()
 
             client = make_client(settings.openai_api_key.get_secret_value())
+
+            def rewrite(history: tuple[Turn, ...], question: str) -> tuple[str | None, int]:
+                # The API's own function, model and prompt.
+                turns = [RewriteTurn(question=t.question, answer=t.answer) for t in history]
+                return rewrite_question(client, ANSWER_MODEL, turns, question)
+
             run(
                 golden,
                 client=client,
                 search=search,
+                rewrite=rewrite,
                 change=args.change.strip(),
                 runs_path=args.runs,
             )

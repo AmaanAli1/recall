@@ -176,3 +176,133 @@ question = "How can Bellman-Ford tell that a graph has a negative cycle?"
 document = "Erickson_Ch8_ShortestPaths.pdf"
 pages = [20]
 answer = "Without negative cycles it's done after V - 1 iterations; if any edge is still tense after that, the graph has a negative cycle."
+
+# ---------- Follow-ups (added 2026-11-25, PR H) ----------
+#
+# A follow-up only makes sense after the earlier turn in
+# `history` (written in our own words, like a saved answer).
+# Each points at the SAME right page as one of the 20 core
+# questions, so a run compares three things on one page:
+# the stand-alone question (core), the vague follow-up as
+# typed, and the follow-up after query rewriting.
+# Scored as their own group: never mixed into core metrics.
+
+[[question]]
+id = "fu-01"
+question = "Why can it take quadratic time?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [10]
+answer = "Quicksort: if the pivot is always the smallest or largest element, T(n) = T(n-1) + O(n) = O(n^2). (Same page as rec-03.)"
+[[question.history]]
+question = "How does quicksort work?"
+answer = "Pick a pivot, partition the array around it, then recursively sort both sides."
+
+[[question]]
+id = "fu-02"
+question = "How many moves does the recursive solution need?"
+document = "Erickson_Ch1_Recursion.pdf"
+pages = [6]
+answer = "Tower of Hanoi: T(n) = 2T(n-1) + 1, so 2^n - 1 moves. (Same page as rec-01.)"
+[[question.history]]
+question = "What is the Tower of Hanoi puzzle?"
+answer = "Move a stack of n disks to another peg, one disk at a time, never putting a larger disk on a smaller one."
+
+[[question]]
+id = "fu-03"
+question = "What recurrence defines it?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [16, 17]
+answer = "Edit distance: the minimum over deleting, inserting or substituting the last character, plus the edit distance of the shorter prefixes. (Same pages as dp-04.)"
+[[question.history]]
+question = "What is edit distance?"
+answer = "The fewest insertions, deletions and substitutions that turn one string into another."
+
+[[question]]
+id = "fu-04"
+question = "How fast is the dynamic programming solution?"
+document = "Erickson_Ch3_DynamicProgramming.pdf"
+pages = [21]
+answer = "Subset sum: O(nT) time, filling a table indexed by the item and the remaining target. (Same page as dp-05.)"
+[[question.history]]
+question = "What is the subset sum problem?"
+answer = "Given a set of integers and a target, decide whether some subset adds up to exactly the target."
+
+[[question]]
+id = "fu-05"
+question = "How does the algorithm decide what to merge?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [8]
+answer = "Huffman: repeatedly merge the two least frequent characters (or subtrees) into one. (Same page as greedy-03.)"
+[[question.history]]
+question = "What is Huffman coding?"
+answer = "A way to build an optimal prefix-free binary code from how often each character appears."
+
+[[question]]
+id = "fu-06"
+question = "Does it matter who makes offers first?"
+document = "Erickson_Ch4_GreedyAlgorithms.pdf"
+pages = [17, 18]
+answer = "Stable matching: no, Gale-Shapley gives the same matching whichever hospital offers first. (Same pages as greedy-05.)"
+[[question.history]]
+question = "What is the stable matching problem?"
+answer = "Pairing doctors with hospitals so that no doctor and hospital both prefer each other to their assigned partners."
+
+[[question]]
+id = "fu-07"
+question = "How fast is it with a binary heap?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [16]
+answer = "Dijkstra with a binary heap: O(E log V). (Same page as sssp-04.)"
+[[question.history]]
+question = "How does Dijkstra's algorithm work?"
+answer = "It repeatedly takes the closest vertex from a priority queue and relaxes its outgoing edges."
+
+[[question]]
+id = "fu-08"
+question = "How can it tell there's a negative cycle?"
+document = "Erickson_Ch8_ShortestPaths.pdf"
+pages = [20]
+answer = "Bellman-Ford: if any edge is still tense after V - 1 rounds of relaxing every edge, there is a negative cycle. (Same page as sssp-05.)"
+[[question.history]]
+question = "What does the Bellman-Ford algorithm do?"
+answer = "It computes shortest paths, even with negative edges, by relaxing every edge V - 1 times."
+
+# ---------- Off-topic (added 2026-11-25, PR H) ----------
+#
+# Nothing in the course answers these. Right = the best
+# match falls below the API's not-found threshold
+# (answer_min_similarity), so the visitor would be told
+# "not found" instead of getting a made-up answer.
+# 3 far from the course, 2 near it (computer science, but
+# not in these four chapters): the near ones test whether
+# the threshold is high enough.
+
+[[question]]
+id = "off-01"
+question = "How do I bake sourdough bread at home?"
+expect = "not_found"
+answer = "Not in the course (far: cooking)."
+
+[[question]]
+id = "off-02"
+question = "Who won the 2018 FIFA World Cup?"
+expect = "not_found"
+answer = "Not in the course (far: sports)."
+
+[[question]]
+id = "off-03"
+question = "What are the symptoms of the common cold?"
+expect = "not_found"
+answer = "Not in the course (far: health)."
+
+[[question]]
+id = "off-04"
+question = "How does a TCP three-way handshake work?"
+expect = "not_found"
+answer = "Not in the course (near: networking, not in these chapters)."
+
+[[question]]
+id = "off-05"
+question = "How do I rebalance a red-black tree after an insertion?"
+expect = "not_found"
+answer = "Not in the course (near: balanced search trees, not in these chapters)."
