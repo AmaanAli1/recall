@@ -11,8 +11,10 @@ import {
   hitsAt,
   questionChapter,
   ruleOfThreeFloor,
+  type Estimate,
   type RealRun,
 } from "@/lib/dyno-results";
+import { GOLDEN_TEXT } from "@/lib/dyno-questions";
 import s from "../dyno.module.css";
 import { cx } from "../_lib/model";
 import { Chip } from "./Collapse";
@@ -22,6 +24,10 @@ import { Chip } from "./Collapse";
  * measured — recall@5 and MRR with their intervals, per-question ranks, the run's
  * setup — and nothing it didn't: faithfulness and relevancy stay "—" until v1.
  * Runs come from the laptop script, so there's no "Run Dyno" button here.
+ *
+ * Since run 2 a run can also carry follow-ups (query rewriting, before/after) and
+ * off-topic questions. Each group gets its own section and its own numbers: they're
+ * never averaged with the core questions, so the headline stays comparable with run 1.
  */
 export function DynoResults({ runs }: { runs: RealRun[] }) {
   const base = runs[0];
@@ -42,8 +48,14 @@ export function DynoResults({ runs }: { runs: RealRun[] }) {
           )}
         </h1>
         <p className="mt-3.5 text-base text-ink-2">
-          {latest.n} golden questions on the four Erickson chapters, retrieval only, measured {formatRunDate(latest.date)} against
-          the live pipeline’s database.
+          {latest.n} golden questions on the four Erickson chapters
+          {latest.followUps || latest.offTopic ? (
+            <>
+              {latest.followUps && `, plus ${latest.followUps.n} follow-ups`}
+              {latest.offTopic && `${latest.followUps ? " and" : ", plus"} ${latest.offTopic.n} off-topic questions, each group scored on its own`}
+            </>
+          ) : null}
+          . Retrieval only, measured {formatRunDate(latest.date)} against the live pipeline’s database.
         </p>
         <p className="mt-1.5 max-w-[42em] text-sm text-ink-2">
           {single ? "Every later change is measured against these numbers. " : ""}
@@ -51,14 +63,16 @@ export function DynoResults({ runs }: { runs: RealRun[] }) {
         </p>
       </div>
 
-      <Scores run={latest} />
+      <Scores run={latest} base={single ? null : base} />
+      {latest.followUps && <FollowUps run={latest} fu={latest.followUps} />}
+      {latest.offTopic && <OffTopic off={latest.offTopic} />}
       <RunsLog runs={runs} base={base} />
       <QuestionRanks run={latest} />
 
       <p className="mt-6 max-w-[46em] text-sm leading-relaxed text-ink-2">
         Runs come from a command-line script, not from this page, so there’s no button to start one.{" "}
         <a href={GOLDEN_URL} className="lnk-hl text-ink">
-          See the {latest.n} questions and their labelled pages →
+          See all {latest.n + (latest.followUps?.n ?? 0) + (latest.offTopic?.n ?? 0)} questions and their labelled pages →
         </a>
       </p>
     </>
@@ -96,10 +110,12 @@ function Card({ title, value, valueLabel, lines }: { title: string; value: strin
   );
 }
 
-function Scores({ run }: { run: RealRun }) {
+function Scores({ run, base }: { run: RealRun; base: RealRun | null }) {
   const recall = run.metrics.recall5;
   const mrr = run.metrics.mrr;
   const hits = hitsAt(run, 5);
+  // Later runs say how they compare with the baseline, in the same units.
+  const vsBase = (now: string, then: string) => (now === then ? `Same as run 1 (${then})` : `Run 1: ${then}`);
   return (
     <section aria-label="Latest run's scores" className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
       <Card
@@ -111,12 +127,17 @@ function Scores({ run }: { run: RealRun }) {
           collapsed(recall)
             ? `With every question a hit, the 95% interval can’t be measured. ${hits}/${run.n} still allows a true recall as low as ${f2(ruleOfThreeFloor(run.n))}.`
             : `95% interval ${f2(recall.low)}–${f2(recall.high)}`,
+          ...(base ? [vsBase(`${hits}/${run.n}`, `${hitsAt(base, 5)}/${base.n}`)] : []),
         ]}
       />
       <Card
         title="MRR"
         value={f2(mrr.value)}
-        lines={[`95% interval ${f2(mrr.low)}–${f2(mrr.high)}`, "How high the right page ranks: 1.00 means always first"]}
+        lines={[
+          `95% interval ${f2(mrr.low)}–${f2(mrr.high)}`,
+          "How high the right page ranks: 1.00 means always first",
+          ...(base ? [vsBase(f2(mrr.value), f2(base.metrics.mrr.value))] : []),
+        ]}
       />
       <Card title="Faithfulness" value="—" valueLabel="Not measured yet" lines={["Not measured in v0", "Needs the answer model and a judge (v1)"]} />
       <Card title="Answer relevancy" value="—" valueLabel="Not measured yet" lines={["Not measured in v0", "Needs the answer model and a judge (v1)"]} />
@@ -221,9 +242,15 @@ function RunSetup({ run }: { run: RealRun }) {
     { label: "Query rewriting", v: run.setup.rewriting },
     { label: "Embeddings", v: run.setup.embedModel },
     { label: "Recall@5 · MRR (95% interval)", v: `${f2(run.metrics.recall5.value)} · ${f2(run.metrics.mrr.value)} (${f2(run.metrics.mrr.low)}–${f2(run.metrics.mrr.high)})` },
-    { label: "Run time · cost", v: `${run.durationS.toFixed(1)} s · ${run.tokens} tokens, under $0.01` },
+    {
+      label: "Run time · cost",
+      v: `${run.durationS.toFixed(1)} s · ${run.tokens} embedding tokens${run.rewriteTokens ? ` + ${run.rewriteTokens} rewrite tokens` : ""}, under $0.01`,
+    },
     { label: "Git commit", v: run.commit, href: commitUrl(run.commit) },
-    { label: "Golden set", v: `${run.n} questions, page-labelled` },
+    {
+      label: "Golden set",
+      v: `${run.n} core questions, page-labelled${run.followUps ? `; ${run.followUps.n} follow-ups` : ""}${run.offTopic ? `; ${run.offTopic.n} off-topic` : ""}`,
+    },
   ];
   return (
     <>
@@ -250,6 +277,167 @@ function RunSetup({ run }: { run: RealRun }) {
 
 const ordinal = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
 
+/** A rank as a chip: "1st" plain, 2nd–5th amber, 6th–10th and misses red. */
+function RankChip({ rank }: { rank: number | null }) {
+  if (rank === null) return <Chip tone="bad">Not in top 10</Chip>;
+  if (rank === 1) return <span className="font-mono text-sm">1st</span>;
+  return <Chip tone={rank <= 5 ? "mid" : "bad"}>{ordinal(rank)}</Chip>;
+}
+
+const hits5 = (ranks: (number | null)[]) => ranks.filter((r) => r !== null && r <= 5).length;
+const interval = (e: Estimate) => (collapsed(e) ? "interval can’t be measured at the ceiling" : `95% interval ${f2(e.low)}–${f2(e.high)}`);
+
+/** Section heading row, the same on every section of this page. */
+function SectionHead({ id, title, note }: { id: string; title: string; note: React.ReactNode }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+      <h2 id={id} className="m-0 text-[22px] font-normal tracking-[-0.02em]">
+        {title}
+      </h2>
+      <span className="text-[13px] text-ink-2">{note}</span>
+    </div>
+  );
+}
+
+/**
+ * Follow-ups: the same right pages as core questions, asked the vague way a student
+ * would in a chat ("why can it take quadratic time?"). Scored twice in the same run:
+ * as typed, and after the API's query rewriting. That before/after is the point.
+ */
+function FollowUps({ run, fu }: { run: RealRun; fu: NonNullable<RealRun["followUps"]> }) {
+  const before = hits5(fu.questions.map((q) => q.rankAsTyped));
+  const after = hits5(fu.questions.map((q) => q.rank));
+  return (
+    <section aria-labelledby="fu-h" className="mt-6">
+      <SectionHead id="fu-h" title="Follow-up questions: query rewriting" note={`${fu.n} follow-ups, before and after rewriting, in the same run`} />
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
+        <Card
+          title="Recall@5, as typed → rewritten"
+          value={`${before} → ${after}`}
+          valueLabel={`${before} of ${fu.n} as typed, ${after} of ${fu.n} rewritten`}
+          lines={[`Out of ${fu.n}. As typed: ${interval(fu.asTyped.recall5)}`, `Rewritten: ${interval(fu.rewritten.recall5)}`]}
+        />
+        <Card
+          title="MRR, as typed → rewritten"
+          value={`${f2(fu.asTyped.mrr.value)} → ${f2(fu.rewritten.mrr.value)}`}
+          valueLabel={`${f2(fu.asTyped.mrr.value)} as typed, ${f2(fu.rewritten.mrr.value)} rewritten`}
+          lines={[`As typed: ${interval(fu.asTyped.mrr)}`, `Rewritten: ${interval(fu.rewritten.mrr)}`]}
+        />
+      </div>
+      <div className="sheet mt-4">
+        <div role="group" aria-label="Follow-up questions table" tabIndex={0} className="relative overflow-x-auto rounded border border-line bg-sheet">
+          <table className="w-full min-w-[820px] border-collapse text-[15px]">
+            <thead>
+              <tr className="text-left text-xs text-ink-2">
+                <th scope="col" className="px-5 py-3.5 font-medium">Question</th>
+                <th scope="col" className="px-4 py-3.5 font-medium">After asking</th>
+                <th scope="col" className="px-4 py-3.5 font-medium">Follow-up as typed</th>
+                <th scope="col" className="px-4 py-3.5 font-medium">Rewritten to</th>
+                <th scope="col" className="px-4 py-3.5 text-right font-medium">As typed</th>
+                <th scope="col" className="py-3.5 pl-4 pr-5 text-right font-medium">Rewritten</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fu.questions.map((q) => {
+                const text = GOLDEN_TEXT[q.id];
+                return (
+                  <tr key={q.id} className="border-t border-line align-top">
+                    <th scope="row" className="whitespace-nowrap px-5 py-3 text-left font-mono text-sm font-normal">
+                      {q.id}
+                    </th>
+                    <td className="px-4 py-3 text-sm text-ink-2">{text?.after ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm">{text?.question ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm">{q.rewritten ?? <span className="text-ink-2">kept as typed</span>}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <RankChip rank={q.rankAsTyped} />
+                    </td>
+                    <td className="whitespace-nowrap py-3 pl-4 pr-5 text-right">
+                      <RankChip rank={q.rank} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="mt-3 max-w-[46em] text-sm leading-relaxed text-ink-2">
+        Each follow-up points at the same page as one of the core questions. Rewriting uses the live API’s own function and model (
+        {run.setup.rewriting}). We wrote these follow-ups and their earlier questions ourselves, and there are only {fu.n}: real
+        follow-ups are messier, so read this as “works on clear cases”.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Off-topic: questions the course doesn't answer. Right = the best match falls below the
+ * threshold where the live answer says "not found" without asking the answer model.
+ */
+function OffTopic({ off }: { off: NonNullable<RealRun["offTopic"]> }) {
+  const overlap = off.highestScore >= off.lowestCoreScore;
+  return (
+    <section aria-labelledby="off-h" className="mt-6">
+      <SectionHead id="off-h" title="Off-topic questions: does it say “not found”?" note={`Not found = best match below ${off.threshold}, the live answer’s threshold`} />
+      <div className="sheet">
+        <div role="group" aria-label="Off-topic questions table" tabIndex={0} className="relative overflow-x-auto rounded border border-line bg-sheet">
+          <table className="w-full min-w-[640px] border-collapse text-[15px]">
+            <thead>
+              <tr className="text-left text-xs text-ink-2">
+                <th scope="col" className="px-5 py-3.5 font-medium">Question</th>
+                <th scope="col" className="px-4 py-3.5 font-medium">Asked</th>
+                <th scope="col" className="px-4 py-3.5 text-right font-medium">Best match</th>
+                <th scope="col" className="py-3.5 pl-4 pr-5 text-right font-medium">Retrieval</th>
+              </tr>
+            </thead>
+            <tbody>
+              {off.questions.map((q) => {
+                const top = q.top[0];
+                return (
+                  <tr key={q.id} className="border-t border-line align-top">
+                    <th scope="row" className="whitespace-nowrap px-5 py-3 text-left font-mono text-sm font-normal">
+                      {q.id}
+                    </th>
+                    <td className="px-4 py-3 text-sm">
+                      {GOLDEN_TEXT[q.id]?.question ?? "—"}
+                      {GOLDEN_TEXT[q.id]?.note && <span className="mt-1 block max-w-[34em] text-[13px] leading-snug text-ink-2">{GOLDEN_TEXT[q.id].note}</span>}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-right font-mono text-sm text-ink-2">
+                      {top ? `${chapterOf(top.file)} p. ${top.page} · ` : ""}
+                      <span className="text-ink">{q.bestScore.toFixed(2)}</span>
+                    </td>
+                    <td className="whitespace-nowrap py-3 pl-4 pr-5 text-right">
+                      {q.notFound ? <Chip tone="good">Not found</Chip> : <Chip tone="bad">Would answer</Chip>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="mt-3 max-w-[46em] text-sm leading-relaxed text-ink-2">
+        <p className="m-0">
+          <strong className="font-medium text-ink">
+            {off.notFound} of {off.n}
+          </strong>{" "}
+          were turned away by retrieval alone. The strongest off-topic match scored {f2(off.highestScore)}; the weakest real question’s best
+          match scored {f2(off.lowestCoreScore)}.{" "}
+          {overlap
+            ? "They overlap, so no single similarity threshold can separate them: raising it would start turning real questions away."
+            : "A threshold between those two would separate them."}
+        </p>
+        {overlap && (
+          <p className="m-0 mt-2">
+            When retrieval lets one through, the answer model is a second guard: it’s told to use only the passages and to return nothing
+            if they don’t answer. Dyno doesn’t measure that step yet (it needs the answer model, v1).
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /** ["12 × 1st", "5 × 2nd", …, "1 × not in top 10"], best ranks first. */
 function rankSummary(run: RealRun): string[] {
   const counts = new Map<number | null, number>();
@@ -268,7 +456,9 @@ function QuestionRanks({ run }: { run: RealRun }) {
   return (
     <section aria-labelledby="ranks-h" className="mt-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="ranks-h" className="m-0 text-[22px] font-normal tracking-[-0.02em]">Where each right page ranked</h2>
+        <h2 id="ranks-h" className="m-0 text-[22px] font-normal tracking-[-0.02em]">
+          Where each right page ranked{run.followUps || run.offTopic ? " (core questions)" : ""}
+        </h2>
         <span className="text-[13px] text-ink-2">
           Run {run.id.slice(1)}. {notFirst} of {run.n} weren’t first: those are the targets for a reranker.
         </span>
@@ -322,13 +512,7 @@ function QuestionRanks({ run }: { run: RealRun }) {
                           </th>
                           <td className="whitespace-nowrap px-4 py-3 text-sm">{questionChapter(q.id)}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
-                            {q.rank === null ? (
-                              <Chip tone="bad">Not in top 10</Chip>
-                            ) : q.rank === 1 ? (
-                              <span className="font-mono text-sm">1st</span>
-                            ) : (
-                              <Chip tone={q.rank <= 5 ? "mid" : "bad"}>{ordinal(q.rank)}</Chip>
-                            )}
+                            <RankChip rank={q.rank} />
                           </td>
                           <td className="whitespace-nowrap py-3 pl-4 pr-5 font-mono text-sm text-ink-2">
                             {top ? `${chapterOf(top.file)} p. ${top.page} · ${top.score.toFixed(2)}` : "—"}

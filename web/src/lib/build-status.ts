@@ -8,5 +8,5 @@ export const BUILD = {
   /** Index into PHASES of the phase being built now. */
   current: 3,
   /** Roughly how far into the current phase, 0–1. */
-  progress: 0.4,
+  progress: 0.7, // Dyno: runs 1–2, follow-ups + off-topic (2026-11-25); faithfulness (v1) not built
 };

@@ -26,6 +26,9 @@ function Receipt() {
   const rows = [
     { k: "recall@5", v: f2(recall5.value), note: `${hitsAt(run, 5)}/${run.n}` },
     { k: "mrr", v: f2(mrr.value), note: `${f2(mrr.low)}–${f2(mrr.high)}` },
+    // Since run 2: the follow-ups' MRR after rewriting (was: as typed) and the off-topic count.
+    ...(run.followUps ? [{ k: "follow-up mrr", v: f2(run.followUps.rewritten.mrr.value), note: `typed ${f2(run.followUps.asTyped.mrr.value)}` }] : []),
+    ...(run.offTopic ? [{ k: "off-topic", v: `${run.offTopic.notFound}/${run.offTopic.n}`, note: "not found" }] : []),
     { k: "faithfulness", v: "—", note: "v1" },
     { k: "relevancy", v: "—", note: "v1" },
   ];
@@ -63,7 +66,9 @@ function Receipt() {
           <span className="font-medium text-ink-2">{baseline ? "BASELINE" : "LOGGED"}</span>
         </div>
         <figcaption className="mt-3.5 text-xs text-ink-2">
-          Real output from run {run.id.slice(1)}: {run.n} golden questions, retrieval only.
+          Real output from run {run.id.slice(1)}: {run.n} golden questions
+          {run.followUps ? ` + ${run.followUps.n} follow-ups` : ""}
+          {run.offTopic ? ` + ${run.offTopic.n} off-topic` : ""}, retrieval only.
         </figcaption>
       </div>
       {/* Torn zig-zag bottom edge */}

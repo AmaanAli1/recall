@@ -14,19 +14,21 @@ async function withSampleRuns(page: Page) {
 }
 
 test.describe("dyno with the real runs (no sample runs)", () => {
-  test("shows run 1: recall 20/20, MRR with its interval, nothing invented @mobile", async ({ page }) => {
+  test("shows run 2: core recall 20/20 and MRR like run 1, nothing invented @mobile", async ({ page }) => {
     await page.goto("/dyno");
-    await expect(page.getByRole("heading", { level: 1, name: "Run 1: the baseline." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Run 2: Query rewriting + follow-ups + off-topic" })).toBeVisible();
     const scores = page.getByRole("region", { name: "Latest run's scores" });
     await expect(scores.getByRole("heading", { level: 2 })).toHaveText(["Recall@5", "MRR", "Faithfulness", "Answer relevancy"]);
     await expect(scores.getByText("20 of 20 questions")).toHaveCount(1);
     await expect(scores.getByText("95% interval 0.63–0.89")).toBeVisible();
     await expect(scores.getByText("Not measured yet")).toHaveCount(2);
+    await expect(scores.getByText("Same as run 1 (0.76)")).toBeVisible();
     // Real runs only: no Run Dyno button, and none of the sample run ids.
     await expect(page.getByRole("button", { name: "Run Dyno" })).toHaveCount(0);
     await expect(page.getByText(/\bR1[0-3]\b|\bR[89]\b/)).toHaveCount(0);
     const table = runsTable(page);
     await expect(table.getByRole("rowheader", { name: /R1/ })).toBeVisible();
+    await expect(table.getByRole("rowheader", { name: /R2/ })).toBeVisible();
     await table.getByRole("button", { name: "Show details for run 1" }).click();
     await expect(table.getByRole("link", { name: /^[0-9a-f]{7}$/ })).toHaveAttribute("href", /github\.com\/AmaanAli1\/recall\/commit\//);
     // The ranks table starts collapsed behind a summary; opening it shows every golden question.
@@ -37,6 +39,25 @@ test.describe("dyno with the real runs (no sample runs)", () => {
     await ranks.click();
     await expect(page.getByRole("button", { name: "Hide the questions" })).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("group", { name: "Question ranks table" }).getByRole("rowheader")).toHaveCount(20);
+  });
+});
+
+test.describe("run 2's follow-ups and off-topic questions", () => {
+  test("shows the follow-ups before and after rewriting, and the off-topic verdicts @mobile", async ({ page }) => {
+    await page.goto("/dyno");
+    const fu = page.getByRole("region", { name: "Follow-up questions: query rewriting" });
+    await expect(fu.getByText("0.20 as typed, 0.92 rewritten")).toBeAttached();
+    await expect(fu.getByText("0.20 → 0.92")).toBeVisible();
+    const fuTable = fu.getByRole("group", { name: "Follow-up questions table" });
+    await expect(fuTable.getByRole("rowheader")).toHaveCount(8);
+    await expect(fuTable.getByRole("row", { name: /fu-07/ })).toContainText("How fast is Dijkstra's algorithm with a binary heap?");
+    const off = page.getByRole("region", { name: "Off-topic questions: does it say “not found”?" });
+    await expect(off.getByText("Not found", { exact: true })).toHaveCount(3);
+    await expect(off.getByText("Would answer", { exact: true })).toHaveCount(2);
+    await expect(off.getByText(/They overlap, so no single similarity threshold can separate them/)).toBeVisible();
+    // Phones scroll the wide tables sideways inside their own box, not the page.
+    const width = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(width).toBeLessThanOrEqual(0);
   });
 });
 
