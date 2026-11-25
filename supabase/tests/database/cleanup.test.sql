@@ -94,7 +94,7 @@ $$, 'a real (non-anonymous) account is never deleted');
 select is(
   (select count(*)::int from public.courses
     where session_id is null),
-  2, 'the 2 sample courses are untouched');
+  1, 'the sample course is untouched');
 
 ------------------------------------------------------
 -- The schedule

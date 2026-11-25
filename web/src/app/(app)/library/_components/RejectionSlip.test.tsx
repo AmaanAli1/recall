@@ -67,8 +67,8 @@ describe("RejectionSlip", () => {
   });
 
   it("a click with no files shows the sample error without an empty list", () => {
-    show({ files: [], added: 0, locked: "Everyday Math" });
-    expect(screen.getByRole("alert")).toHaveTextContent("Everyday Math is shared by every visitor");
+    show({ files: [], added: 0, locked: "Algorithms" });
+    expect(screen.getByRole("alert")).toHaveTextContent("Algorithms is shared by every visitor");
     expect(screen.queryByRole("list")).toBeNull();
   });
 });

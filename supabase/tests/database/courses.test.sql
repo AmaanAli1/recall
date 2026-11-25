@@ -1,5 +1,6 @@
--- The sample courses after the 2026-11-23 clean-up, and
--- the details of the one-course limit.
+-- The sample course after the clean-ups (2026-11-23: OS
+-- and Statistics removed; 2026-11-24: Everyday Math removed),
+-- and the details of the one-course limit.
 --
 -- One transaction, rolled back at the end: nothing kept.
 
@@ -16,15 +17,15 @@ select results_eq($$
     select id::text, name, color from public.courses
      where session_id is null order by id
 $$, $$ values
-    ('00000000-0000-0000-0000-00000000c001', 'Algorithms', 'blue'),
-    ('00000000-0000-0000-0000-00000000c004', 'Everyday Math', 'green')
-$$, 'the sample courses are Algorithms and Everyday Math');
+    ('00000000-0000-0000-0000-00000000c001', 'Algorithms', 'blue')
+$$, 'Algorithms is the only sample course');
 
 select is_empty($$
     select 1 from public.courses
      where id in ('00000000-0000-0000-0000-00000000c002',
-                  '00000000-0000-0000-0000-00000000c003')
-$$, 'Operating Systems and Statistics are gone');
+                  '00000000-0000-0000-0000-00000000c003',
+                  '00000000-0000-0000-0000-00000000c004')
+$$, 'Operating Systems, Statistics and Everyday Math are gone');
 
 -- Two fake visitors (the trigger creates their sessions).
 insert into auth.users (id) values
@@ -42,14 +43,14 @@ set local request.jwt.claims =
 select is(
     (select count(*)::int from public.courses
       where session_id is null),
-    2, 'a visitor sees both sample courses');
+    1, 'a visitor sees the sample course');
 
--- The samples don't count towards the limit: C has none
+-- The sample doesn't count towards the limit: C has none
 -- of their own yet, so one is fine.
 select lives_ok($$
     insert into public.courses (session_id, name)
     values ('00000000-0000-0000-0000-00000000000c', 'Mine')
-$$, 'the sample courses don''t count towards the limit');
+$$, 'the sample course doesn''t count towards the limit');
 
 -- An archived course still holds PDFs, so it still counts.
 update public.courses set archived = true

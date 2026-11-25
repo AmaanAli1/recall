@@ -164,7 +164,7 @@ describe("AnswerSheet: other states", () => {
   });
 
   it("hides the starters on a course with no real documents, and says why", () => {
-    render(<AnswerSheet {...base} view="empty" courseName="Everyday Math" sampleOnly />);
+    render(<AnswerSheet {...base} view="empty" courseName="Networks" sampleOnly />);
     expect(screen.queryByRole("button", { name: /Dijkstra/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Only Algorithms has real documents/)).toBeInTheDocument();
   });

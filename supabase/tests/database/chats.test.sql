@@ -105,10 +105,11 @@ select lives_ok($$
 $$, 'A can rename her chat');
 
 -- ...but other columns have none: 42501 from GRANTs,
--- before RLS is even consulted.
+-- before RLS is even consulted (or the course id checked:
+-- this one doesn't exist, and it never gets that far).
 select throws_ok($$
   update public.chats
-     set course_id = '00000000-0000-0000-0000-00000000c004'
+     set course_id = '00000000-0000-0000-0000-0000000000ff'
    where id = '00000000-0000-0000-0000-00000000c4a1'
 $$, '42501', null,
   'A cannot move a chat to another course');

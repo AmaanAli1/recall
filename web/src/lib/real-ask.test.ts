@@ -14,7 +14,6 @@ import { SAMPLE_COURSE_IDS } from "./sample-courses";
 vi.setConfig({ testTimeout: 20_000 });
 
 const ALGO = SAMPLE_COURSE_IDS.algorithms;
-const MATH = SAMPLE_COURSE_IDS.everydayMath;
 
 /** A fresh copy of the API client with these flags. */
 async function client(flags: { sessions?: boolean; chats?: boolean; ask?: boolean }) {
@@ -92,14 +91,14 @@ describe("askAndSave", () => {
 describe("listCourses with real answers", () => {
   const realCourses = [
     { id: ALGO, name: "Algorithms", color: "blue", sample: true, documents: [] },
-    { id: MATH, name: "Everyday Math", color: "green", sample: true, documents: [] },
+    { id: "own-1", name: "My notes", color: "rust", sample: false, documents: [] },
   ];
 
   it("lists the four real Erickson chapters for Algorithms, and leaves other courses alone", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, realCourses)));
     const { listCourses } = await client({ sessions: true, chats: true, ask: true });
 
-    const [algo, math] = await listCourses();
+    const [algo, mine] = await listCourses();
 
     expect(algo.documents.map((d) => d.name)).toEqual([
       "Erickson_Ch1_Recursion.pdf",
@@ -111,7 +110,7 @@ describe("listCourses with real answers", () => {
     expect(algo.documents.reduce((n, d) => n + (d.passages ?? 0), 0)).toBe(327);
     // Each chapter links to the author's own PDF ("Open the original PDF").
     expect(algo.documents.every((d) => d.sourceUrl?.startsWith("https://jeffe.cs.illinois.edu/teaching/algorithms/book/"))).toBe(true);
-    expect(math.documents).toEqual([]); // no real PDFs yet: still the mock's (empty) list
+    expect(mine.documents).toEqual([]); // no real PDFs yet: still the mock's (empty) list
   });
 
   it("keeps a real chapter hidden after it's deleted in this tab", async () => {

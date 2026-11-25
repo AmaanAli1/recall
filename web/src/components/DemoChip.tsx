@@ -109,7 +109,7 @@ export function DemoChip() {
             <dt className="text-ink-3">Session</dt>
             <dd className="m-0 font-mono" translate="no">{session.id}</dd>
             <dt className="text-ink-3">Courses</dt>
-            <dd className="m-0">2 sample courses + 1 of your own</dd>
+            <dd className="m-0">1 sample course + 1 of your own</dd>
             <dt className="text-ink-3">Expires</dt>
             <dd className="m-0">24 h after your last visit</dd>
           </dl>

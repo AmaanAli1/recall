@@ -86,7 +86,7 @@ export function Pipeline() {
         <div>
           <h2 id="pipe-h" className="m-0 text-[46px] font-normal tracking-[-0.032em]">From pages to proof.</h2>
           <p className="mb-0 mt-3 max-w-[38em] text-[17px] leading-[1.6] text-ink-2">
-            Your question pulls passages from every document in the course. A reranker scores each one, and only strong matches get cited.
+            Your question pulls passages from every document in the course. Each one is scored against your question, and only strong matches get cited.
           </p>
         </div>
         <button
@@ -111,7 +111,7 @@ export function Pipeline() {
           <div ref={fitRef} className="relative mx-auto w-full max-w-[1200px]" style={{ height: Math.round(STAGE_H * fit) }}>
             <div
               role="img"
-              aria-label="Four documents feed a reranker gauge. Passages scoring 0.75 or more are cited, 0.5 to 0.75 become context, and weaker ones are dropped before the answer is written."
+              aria-label="Four documents feed a scoring gauge. Passages scoring 0.75 or more are cited, 0.5 to 0.75 become context, and weaker ones are dropped before the answer is written."
               className="absolute left-1/2 top-0 origin-top"
               style={{ width: STAGE_W, height: STAGE_H, transform: `translateX(-50%) scale(${fit})` }}
             >
