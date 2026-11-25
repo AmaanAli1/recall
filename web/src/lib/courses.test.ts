@@ -19,7 +19,7 @@ describe("cleanCode", () => {
 });
 
 describe("courseNameError", () => {
-  const existing = ["Algorithms", "Everyday Math"];
+  const existing = ["Algorithms", "Networks"];
 
   it("rejects empty and whitespace-only names", () => {
     expect(courseNameError("", existing)).toBe("Give the course a name.");

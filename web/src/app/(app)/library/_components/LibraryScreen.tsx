@@ -339,7 +339,7 @@ export function LibraryScreen() {
             <p className="mt-3 max-w-[36em] text-[17px] leading-relaxed text-ink-2">Your course PDFs, split into passages Recall can search and cite.</p>
             <p className="mt-2.5 flex items-center gap-2 text-sm text-ink-2">
               <span aria-hidden="true" className="h-[7px] w-[7px] flex-none rounded-full bg-good shadow-[0_0_0_3px_rgba(11,112,70,0.14)]" />
-              Your demo comes with 2 sample courses, and you can start one course of your own.
+              Your demo comes with a sample course, Algorithms, and you can start one course of your own.
             </p>
             {REAL_ASK && <CreditLine className="mt-1.5" />}
           </div>

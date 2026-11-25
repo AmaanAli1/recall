@@ -139,17 +139,26 @@ test.describe("ask", () => {
   });
 
   test("switching course stays on Ask; a course with no documents points to Library and disables asking", async ({ page }) => {
-    await page.goto("/ask");
+    // The only sample course is Algorithms, so make an empty course of your own first.
+    // (Client-side navigation keeps the mock's in-memory courses; a reload would not.)
+    await page.goto("/library");
+    await page.getByRole("button", { name: "New course" }).click();
+    const dialog = page.getByRole("dialog", { name: "New course" });
+    await dialog.getByRole("textbox", { name: "Course name" }).fill("My notes");
+    await dialog.getByRole("button", { name: "Create course" }).click();
+    await expect(dialog).toBeHidden();
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Ask" }).click();
+
     const courses = page.getByRole("complementary", { name: "Courses and chats" });
-    // Exactly the two sample courses (Operating Systems and Statistics were removed).
-    await expect(courses.getByRole("button", { name: /Operating Systems|Statistics|Linear Algebra/ })).toHaveCount(0);
-    await courses.getByRole("button", { name: /Everyday Math/ }).click();
+    // Only Algorithms is a sample now (OS, Statistics and Everyday Math were removed).
+    await expect(courses.getByRole("button", { name: /Operating Systems|Statistics|Linear Algebra|Everyday Math/ })).toHaveCount(0);
+    await courses.getByRole("button", { name: /My notes/ }).click();
 
     await expect(page).toHaveURL(/\/ask$/);
-    await expect(courses.getByRole("button", { name: /Everyday Math/ })).toHaveAttribute("aria-current", "true");
-    // Its PDFs aren't loaded yet, so there's nothing to ask.
-    await expect(page.getByRole("heading", { level: 1, name: "Everyday Math has no documents yet." })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Ask about Everyday Math" })).toBeDisabled();
+    await expect(courses.getByRole("button", { name: /My notes/ })).toHaveAttribute("aria-current", "true");
+    // No PDFs yet, so there's nothing to ask.
+    await expect(page.getByRole("heading", { level: 1, name: "My notes has no documents yet." })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Ask about My notes" })).toBeDisabled();
     await expect(courses.getByRole("link", { name: "DP vs greedy" })).toHaveCount(0);
   });
 
@@ -217,8 +226,11 @@ test.describe("ask", () => {
     await expect(gear).toBeFocused();
   });
 
-  test("/ask?course=<id> opens on that course", async ({ page }) => {
+  test("/ask?course=<id> opens on that course, and a removed course's old link falls back", async ({ page }) => {
+    await page.goto("/ask?course=00000000-0000-0000-0000-00000000c001");
+    await expect(page.getByRole("textbox", { name: "Ask about Algorithms" })).toBeVisible();
+    // Everyday Math (c004) was removed: an old link must still open Ask, on Algorithms.
     await page.goto("/ask?course=00000000-0000-0000-0000-00000000c004");
-    await expect(page.getByRole("heading", { level: 1, name: "Everyday Math has no documents yet." })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Ask about Algorithms" })).toBeVisible();
   });
 });

@@ -30,17 +30,22 @@ test.describe("library", () => {
     const algo = page.getByRole("tab", { name: /Algorithms/ });
     await expect(algo).toHaveAttribute("aria-selected", "true");
     await expect(algo).toContainText("[4]"); // the 4 Erickson chapters, as on the real site
-    // Exactly the two sample courses.
-    await expect(page.getByRole("tab")).toHaveCount(2);
-    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toContainText("[0]");
+    // Exactly one sample course (Everyday Math was removed on 2026-11-24).
+    await expect(page.getByRole("tab")).toHaveCount(1);
 
-    // Arrow keys move between tabs.
-    await algo.focus();
+    // With a course of your own, the arrow keys move between tabs.
+    await makeOwnCourse(page, "My notes");
+    const mine = page.getByRole("tab", { name: /My notes/ });
+    await expect(mine).toContainText("[0]");
+    // Click, not focus(): the closing dialog hands focus back to its button.
+    await mine.click();
+    await expect(mine).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(algo).toBeFocused();
+    await expect(algo).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("ArrowRight");
-    const math = page.getByRole("tab", { name: /Everyday Math/ });
-    await expect(math).toBeFocused();
-    await expect(math).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("heading", { name: "Nothing in Everyday Math yet." })).toBeVisible();
+    await expect(mine).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "Nothing in My notes yet." })).toBeVisible();
   });
 
   test("a .pptx shows the PDFs-only slip, and Got it dismisses it", async ({ page }) => {
@@ -228,8 +233,7 @@ test.describe("library", () => {
 
   test("a sample course's menu offers nothing to change, and says why @mobile", async ({ page }) => {
     await openLibrary(page);
-    for (const name of ["Algorithms", "Everyday Math"]) {
-      await page.getByRole("tab", { name: new RegExp(name) }).click();
+    for (const name of ["Algorithms"]) {
       await page.getByRole("button", { name: `Options for ${name}` }).click();
       const menu = page.getByRole("menu", { name: `Options for ${name}` });
       const item = menu.getByRole("menuitem");
@@ -271,11 +275,10 @@ test.describe("library", () => {
     expect(await chooser).toBe(false);
     await slip.getByRole("button", { name: "Got it" }).click();
 
-    // 3. The U shortcut too, on Everyday Math.
-    await page.getByRole("tab", { name: /Everyday Math/ }).click();
+    // 3. The U shortcut too.
     await page.locator("body").click({ position: { x: 5, y: 5 } });
     await page.keyboard.press("u");
-    await expect(page.getByRole("alert").filter({ hasText: "Everyday Math is shared by every visitor" })).toBeVisible();
+    await expect(slip).toBeVisible();
 
     // New course is the way forward.
     await page.getByRole("alert").getByRole("button", { name: "New course" }).click();
@@ -329,8 +332,11 @@ test.describe("library", () => {
     expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
   });
 
-  test("/library?course=<id> opens on that course", async ({ page }) => {
+  test("/library?course=<id> opens on that course, and a removed course's old link falls back", async ({ page }) => {
+    await page.goto("/library?course=00000000-0000-0000-0000-00000000c001");
+    await expect(page.getByRole("tab", { name: /Algorithms/ })).toHaveAttribute("aria-selected", "true");
+    // Everyday Math (c004) was removed: an old link must still open the Library.
     await page.goto("/library?course=00000000-0000-0000-0000-00000000c004");
-    await expect(page.getByRole("tab", { name: /Everyday Math/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: /Algorithms/ })).toHaveAttribute("aria-selected", "true");
   });
 });

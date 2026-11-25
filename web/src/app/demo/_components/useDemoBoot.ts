@@ -8,8 +8,8 @@ export type StepStatus = "idle" | "busy" | "done" | "failed";
 
 export const STEP_LABELS = [
   "Creating your private session",
-  "Opening the sample courses",
-  "Warming up search and the reranker",
+  "Opening the sample course",
+  "Warming up search",
 ] as const;
 
 /** Pacing, not fake waiting: a step that resolves instantly still stays on screen long enough to read. */
@@ -56,7 +56,7 @@ function describeCourses(courses: Course[]): string {
   return `${sample.length} sample course${sample.length === 1 ? "" : "s"} · ${pdfs} lecture PDF${pdfs === 1 ? "" : "s"}`;
 }
 
-/** Stand-in for a backend warm-up call (embedding model + reranker load). */
+/** Stand-in for a backend warm-up call (the search service waking up). */
 function warmUp(): Promise<void> {
   return Promise.resolve();
 }

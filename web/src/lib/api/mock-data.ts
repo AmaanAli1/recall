@@ -1,6 +1,6 @@
 /**
- * Sample data for the mocked API. It mirrors the 2 sample courses that every
- * demo session ships with (Algorithms, Everyday Math).
+ * Sample data for the mocked API. It mirrors the sample course that every
+ * demo session ships with (Algorithms).
  *
  * The canned answers below are mock-mode only (local runs and CI, never the
  * Preview or Production): their excerpts are written for the tests, not
@@ -20,9 +20,6 @@ export const COURSES: Course[] = [
     // so local runs and CI show what the Preview and Production show.
     documents: REAL_DOCUMENTS[SAMPLE_COURSE_IDS.algorithms].map((d) => ({ ...d })),
   },
-  // Its PDFs (OpenStax Prealgebra 2e chapters) arrive with the next data load;
-  // until then it has none, so Ask says "not found" and offers no starters.
-  { id: SAMPLE_COURSE_IDS.everydayMath, name: "Everyday Math", color: "green", sample: true, documents: [] },
 ];
 
 export const CHATS: ChatSummary[] = [
@@ -50,7 +47,6 @@ export const STARTERS: Starter[] = [
 /** Starter questions per course. A course with no documents has none. */
 export const COURSE_STARTERS: Record<string, Starter[]> = {
   [SAMPLE_COURSE_IDS.algorithms]: STARTERS,
-  [SAMPLE_COURSE_IDS.everydayMath]: [],
 };
 
 export const ANSWERS: Record<string, Answer> = {
