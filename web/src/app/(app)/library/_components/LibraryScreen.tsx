@@ -100,6 +100,8 @@ export function LibraryScreen() {
     if (!courseId) return;
     // The first batch into an empty course earns the "ready to ask" nudge.
     const target = courses?.find((c) => c.id === courseId);
+    // Belt and braces: the drop zone already refuses, and so does the database.
+    if (target?.sample) return;
     if (files.length && (!target || target.documents.length === 0)) setNudgeFor((n) => new Set(n).add(courseId));
     setLeaveHref(null); // a stale "leave" request must not reopen the guard for these new uploads
     const rows = files.map((file) => ({
@@ -393,7 +395,14 @@ export function LibraryScreen() {
                 <div className="ear relative bg-sheet pb-8 pl-12 pr-4 pt-7 sm:pl-[76px] sm:pr-8">
                   {/* The red margin line of ruled paper. */}
                   <span aria-hidden="true" className="absolute bottom-0 left-[34px] top-0 w-px bg-margin sm:left-[54px]" />
-                  <DropZone courseName={course.name} onAccept={(files) => accept(files)} />
+                  {/* key: a new course gets a fresh zone, so a slip from the last course doesn't linger. */}
+                  <DropZone
+                    key={course.id}
+                    courseName={course.name}
+                    locked={course.sample}
+                    onAccept={(files) => accept(files)}
+                    onNewCourse={() => setDialog({ kind: "new" })}
+                  />
                   {course.archived && (
                     <div role="status" className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 rounded-[5px] bg-sheet-2 px-4 py-3 text-sm text-ink-2">
                       <span>

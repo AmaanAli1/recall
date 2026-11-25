@@ -171,6 +171,8 @@
   box-shadow: 0 2px 3px rgba(70, 45, 20, 0.08), 0 18px 36px -12px rgba(70, 45, 20, 0.32);
   transform-origin: top right; animation: menuIn 160ms var(--ease-out);
 }
+/* When the button has wrapped to the left edge (narrow screens, many tabs). */
+.cMenuLeft { right: auto; left: 0; transform-origin: top left; }
 .cMi {
   display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; min-height: 36px; border: 0; border-radius: 4px;
   background: transparent; font: inherit; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer;

@@ -19,6 +19,12 @@ export const COURSE_LIMIT = 1;
 export const COURSE_LIMIT_MESSAGE = "A demo can hold 1 course of your own.";
 
 /** The visitor's own courses: the ones that count towards the limit. */
+/**
+ * Sample courses are shared by every visitor, so nobody can change them or add
+ * PDFs to them. The database refuses it (RLS: visitors have no insert on
+ * documents, and update/delete only on their own courses); the UI says so first.
+ */
+export const SAMPLE_LOCKED_MESSAGE = "Sample courses are shared by every visitor, so they can't be changed and PDFs can't be added to them.";
 export const ownCourseCount = (courses: readonly { sample: boolean }[]) => courses.filter((c) => !c.sample).length;
 export const NAME_MAX = 60;
 export const CODE_MAX = 12;

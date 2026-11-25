@@ -9,6 +9,10 @@ import s from "../library.module.css";
  * "… Course" next to the tabs: acts on the course you're viewing.
  * Edit (name, code, term, colour) · Archive / Unarchive · Delete (confirm, then Undo).
  * You can't archive or delete your last active course, so Ask always has one.
+ *
+ * Sample courses are shared by every visitor, so their menu holds one disabled
+ * item that says why there's nothing to change. (The database refuses changes
+ * to them anyway: this only stops the screen offering what can't happen.)
  */
 export function CourseMenu({
   course,
@@ -25,6 +29,9 @@ export function CourseMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // The menu hangs from the button's right edge, unless that would push it off
+  // the left of the screen (the button wraps to the left edge on narrow screens).
+  const [alignLeft, setAlignLeft] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -53,7 +60,13 @@ export function CourseMenu({
   // Focus moves into the menu (first item, or Cancel on the confirm step).
   useEffect(() => {
     if (!open) return;
-    menu.current?.querySelector<HTMLElement>(confirming ? "[data-cancel]" : '[role="menuitem"]:not([aria-disabled="true"])')?.focus();
+    // A sample course's menu has only a disabled item: focus it anyway, so the
+    // explanation is read out and the arrow keys and Escape still work.
+    const m = menu.current;
+    const first = confirming
+      ? m?.querySelector<HTMLElement>("[data-cancel]")
+      : (m?.querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ?? m?.querySelector<HTMLElement>('[role="menuitem"]'));
+    first?.focus();
   }, [open, confirming]);
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -80,7 +93,12 @@ export function CourseMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Options for ${label}`}
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => {
+          if (open) return close();
+          const right = trigger.current?.getBoundingClientRect().right ?? Infinity;
+          setAlignLeft(right < MENU_WIDTH + EDGE);
+          setOpen(true);
+        }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <circle cx="5" cy="12" r="1.8" />
@@ -90,8 +108,16 @@ export function CourseMenu({
         Course
       </button>
       {open && (
-        <div ref={menu} role="menu" aria-label={`Options for ${label}`} className={s.cMenu}>
-          {confirming ? (
+        <div ref={menu} role="menu" aria-label={`Options for ${label}`} className={`${s.cMenu} ${alignLeft ? s.cMenuLeft : ""}`}>
+          {course.sample ? (
+            <div role="menuitem" tabIndex={-1} aria-disabled="true" className={s.cMi}>
+              <Icon d="M6 11V8a6 6 0 0 1 12 0v3 M5 11h14v10H5z" />
+              <span>
+                Sample course
+                <span className={s.cMiHint}>Shared by every visitor, so it can’t be edited, archived or deleted.</span>
+              </span>
+            </div>
+          ) : confirming ? (
             <div className="px-2 pb-1.5 pt-2">
               <p className="m-0 text-[13px] leading-[1.45]">
                 Delete <strong className="font-semibold">{label}</strong>? Its {docText} and their chats go too. You can undo right after.
@@ -171,6 +197,10 @@ export function CourseMenu({
     </div>
   );
 }
+
+/** .cMenu's width in library.module.css, plus a margin from the screen edge. */
+const MENU_WIDTH = 252;
+const EDGE = 8;
 
 function Icon({ d }: { d: string }) {
   return (

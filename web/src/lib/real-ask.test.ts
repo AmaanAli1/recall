@@ -8,6 +8,11 @@ import { ApiError } from "./api";
 import { askErrorText, SESSION_ENDED } from "./ask-errors";
 import { SAMPLE_COURSE_IDS } from "./sample-courses";
 
+// client() re-imports the whole API client after vi.resetModules(). On a cold,
+// slow machine (antivirus scanning each file) a test with several of those can
+// pass the 5 s default, so this file gets 20 s. It changes nothing when fast.
+vi.setConfig({ testTimeout: 20_000 });
+
 const ALGO = SAMPLE_COURSE_IDS.algorithms;
 const MATH = SAMPLE_COURSE_IDS.everydayMath;
 
