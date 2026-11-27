@@ -22,8 +22,8 @@ select table_privs_are(
 
 select table_privs_are(
   'public', 'courses', 'authenticated',
-  array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-  'visitors can read and change courses (RLS limits rows)');
+  array['SELECT'],
+  'visitors can only read courses (since 2026-11-27)');
 
 select table_privs_are(
   'public', 'courses', 'anon',

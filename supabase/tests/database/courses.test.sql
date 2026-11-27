@@ -1,16 +1,19 @@
--- The sample course after the clean-ups (2026-11-23: OS
--- and Statistics removed; 2026-11-24: Everyday Math removed),
--- and the details of the one-course limit.
+-- Courses are read-only for visitors (2026-11-27,
+-- migration 20261127040000_read_only_courses.sql).
+--
+-- The demo has one shared course, Algorithms. Visitors
+-- can read it, and nothing else: no creating, renaming
+-- or deleting any course, their own included.
 --
 -- One transaction, rolled back at the end: nothing kept.
 
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(10);
 
 ------------------------------------------------------
--- The sample courses (as the admin, who sees everything)
+-- As admin: the sample course and what was removed
 ------------------------------------------------------
 
 select results_eq($$
@@ -27,10 +30,22 @@ select is_empty($$
                   '00000000-0000-0000-0000-00000000c004')
 $$, 'Operating Systems, Statistics and Everyday Math are gone');
 
--- Two fake visitors (the trigger creates their sessions).
+-- The one-course limit is gone with the feature.
+select hasnt_trigger('public', 'courses', 'courses_limit',
+    'the course-limit trigger is gone');
+
+select hasnt_function('public', 'enforce_course_limit',
+    'and so is its function');
+
+-- Only the read policy is left.
+select policies_are('public', 'courses',
+    array['read own and sample courses'],
+    'visitors have a read policy on courses, and nothing else');
+
+-- A fake visitor (the trigger on auth.users creates
+-- their session, like a real anonymous sign-in).
 insert into auth.users (id) values
-  ('00000000-0000-0000-0000-00000000000c'),
-  ('00000000-0000-0000-0000-00000000000d');
+  ('00000000-0000-0000-0000-00000000000c');
 
 ------------------------------------------------------
 -- As visitor C
@@ -41,64 +56,32 @@ set local request.jwt.claims =
     '{"sub":"00000000-0000-0000-0000-00000000000c", "role":"authenticated"}';
 
 select is(
-    (select count(*)::int from public.courses
-      where session_id is null),
-    1, 'a visitor sees the sample course');
+    (select count(*)::int from public.courses),
+    1, 'a visitor sees the sample course, and only that');
 
--- The sample doesn't count towards the limit: C has none
--- of their own yet, so one is fine.
-select lives_ok($$
+-- 42501 = insufficient_privilege. Visitors have no
+-- INSERT/UPDATE/DELETE grant any more, so Postgres
+-- refuses before RLS is even asked. Each attempt is
+-- inside throws_ok: an error outside it would abort
+-- the whole test transaction.
+select throws_ok($$
     insert into public.courses (session_id, name)
     values ('00000000-0000-0000-0000-00000000000c', 'Mine')
-$$, 'the sample course doesn''t count towards the limit');
+$$, '42501', null, 'a visitor cannot create a course of their own');
 
--- An archived course still holds PDFs, so it still counts.
-update public.courses set archived = true
- where session_id = '00000000-0000-0000-0000-00000000000c';
-
-select throws_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000c', 'Second')
-$$, '23514', 'A demo can hold 1 course of your own.',
-    'an archived course still counts');
-
--- Deleting it frees the slot again.
-delete from public.courses
- where session_id = '00000000-0000-0000-0000-00000000000c';
-
-select lives_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000c', 'Replacement')
-$$, 'deleting your course makes room for a new one');
-
-------------------------------------------------------
--- As visitor D: the limit is per session
-------------------------------------------------------
-
-set local request.jwt.claims =
-    '{"sub":"00000000-0000-0000-0000-00000000000d", "role":"authenticated"}';
-
-select lives_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000d', 'Mine')
-$$, 'another visitor gets their own course (same name is fine)');
-
-select throws_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000d', 'More')
-$$, '23514', 'A demo can hold 1 course of your own.',
-    'and is limited to one as well');
-
-------------------------------------------------------
--- Visitors still can't add sample courses
-------------------------------------------------------
-
--- session_id null = a sample course; the insert policy
--- requires your own session id, so RLS refuses (42501).
 select throws_ok($$
     insert into public.courses (session_id, name)
     values (null, 'Fake sample')
 $$, '42501', null, 'a visitor cannot create a sample course');
+
+select throws_ok($$
+    update public.courses set name = 'hacked'
+     where session_id is null
+$$, '42501', null, 'a visitor cannot rename the sample course');
+
+select throws_ok($$
+    delete from public.courses where session_id is null
+$$, '42501', null, 'a visitor cannot delete the sample course');
 
 select * from finish();
 rollback;
