@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { isUuid, parseNewChat, titleFromQuestion } from "@/lib/chats";
-import { apiError, dbError } from "@/lib/supabase/errors";
+import { isUuid } from "@/lib/chats";
+import { apiError } from "@/lib/supabase/errors";
 import { toChatRecord } from "@/lib/supabase/mappers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,49 +38,10 @@ export async function GET(request: Request) {
   return NextResponse.json(rows.map(toChatRecord));
 }
 
-/**
- * POST /api/chats { courseId, question, answer }: start a chat with its
- * first question and answer. 201 with the new chat.
- *
- * Two writes: the chat, then its two messages. They're separate requests
- * to the database, so they aren't one transaction. If the second fails,
- * we delete the chat we just made (a "compensating action"), so the
- * visitor is never left with an empty chat in the sidebar.
+/*
+ * No POST here any more (security pass, 2026-11-27). POST /api/chats took
+ * the answer from the BROWSER and saved it: a leftover from before real
+ * answers existed. Real answers are saved by the server in POST /api/ask,
+ * from the RAG service's reply, so a client can't put words in Recall's
+ * mouth through our own API. Next.js answers a POST here with 405.
  */
-export async function POST(request: Request) {
-  // request.json() throws on a body that isn't JSON; treat that as "no body".
-  const body: unknown = await request.json().catch(() => null);
-  const parsed = parseNewChat(body);
-  if (!parsed.ok) return apiError(parsed.error, 400);
-  const { courseId, question, answerText, answer } = parsed.value;
-
-  const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  if (!claimsData?.claims.sub) return apiError("No demo session.", 401);
-
-  // No session_id here: the column defaults to auth.uid(), read from the
-  // visitor's token. RLS refuses (42501) if the course isn't one they can
-  // see, and the trigger refuses (23514) at the 100-chat limit.
-  const { data: chat, error: chatError } = await supabase
-    .from("chats")
-    .insert({ course_id: courseId, title: titleFromQuestion(question) })
-    .select(CHAT_COLUMNS)
-    .single();
-
-  if (chatError) return dbError(chatError, "Couldn't save this chat.");
-
-  // Both rows in ONE insert = one statement, so they're saved together or
-  // not at all. The id column keeps them in order (question, then answer).
-  const { error: messagesError } = await supabase.from("messages").insert([
-    { chat_id: chat.id, role: "user", content: question },
-    { chat_id: chat.id, role: "assistant", content: answerText, answer },
-  ]);
-
-  if (messagesError) {
-    const { error: undoError } = await supabase.from("chats").delete().eq("id", chat.id);
-    if (undoError) console.error("[api] couldn't remove the empty chat", undoError);
-    return dbError(messagesError, "Couldn't save this chat.");
-  }
-
-  return NextResponse.json(toChatRecord(chat), { status: 201 });
-}

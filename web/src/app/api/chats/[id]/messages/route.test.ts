@@ -11,10 +11,12 @@ vi.mock("@/lib/supabase/server", async () => {
   return { createClient: async () => fakeClient() };
 });
 
-const { GET, POST } = await import("./route");
+const routeModule = await import("./route");
+const { GET } = routeModule;
+
+const answer = { claims: ["Use Bellman-Ford instead."] };
 
 const CHAT = "11111111-1111-4111-8111-111111111111";
-const answer = { claims: ["Use Bellman-Ford instead."] };
 const rows = [
   { id: 7, role: "user", content: "And with negative edges?", answer: null, created_at: "2026-11-05T05:00:00+00:00" },
   { id: 8, role: "assistant", content: "Use Bellman-Ford instead.", answer, created_at: "2026-11-05T05:00:00+00:00" },
@@ -22,9 +24,6 @@ const rows = [
 
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 const get = (id: string) => GET(new Request(`http://test/api/chats/${id}/messages`), ctx(id));
-const post = (id: string, body: unknown) =>
-  POST(new Request(`http://test/api/chats/${id}/messages`, { method: "POST", body: JSON.stringify(body) }), ctx(id));
-
 beforeEach(() => {
   fake.reset();
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -60,36 +59,9 @@ describe("GET /api/chats/[id]/messages", () => {
 });
 
 describe("POST /api/chats/[id]/messages", () => {
-  it("saves the question and answer in one insert and returns them", async () => {
-    fake.results = [{ data: rows, error: null }];
-    const res = await post(CHAT, { question: "And with negative edges?", answer });
-    expect(res.status).toBe(201);
-    expect(await res.json()).toHaveLength(2);
-    expect(fake.queries[0].calls[0]).toEqual([
-      "insert",
-      [[
-        { chat_id: CHAT, role: "user", content: "And with negative edges?" },
-        { chat_id: CHAT, role: "assistant", content: "Use Bellman-Ford instead.", answer },
-      ]],
-    ]);
-  });
-
-  it("returns 404 (not 403) when RLS refuses: the chat isn't yours", async () => {
-    fake.results = [{ data: null, error: { code: "42501", message: "new row violates row-level security policy" } }];
-    const res = await post(CHAT, { question: "Hi", answer });
-    expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "Chat not found." });
-  });
-
-  it("returns 409 with the database's message when the chat is full", async () => {
-    fake.results = [{ data: null, error: { code: "23514", message: "This chat is full. Start a new chat." } }];
-    const res = await post(CHAT, { question: "Hi", answer });
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: "This chat is full. Start a new chat." });
-  });
-
-  it("returns 400 for a missing answer, before touching the database", async () => {
-    expect((await post(CHAT, { question: "Hi" })).status).toBe(400);
-    expect(fake.queries).toHaveLength(0);
+  // Removed in the security pass (2026-11-27): follow-ups are saved by
+  // POST /api/ask on the server, never from an answer the browser sends.
+  it("no longer exists, so a browser can't save an answer of its own", () => {
+    expect("POST" in routeModule).toBe(false);
   });
 });

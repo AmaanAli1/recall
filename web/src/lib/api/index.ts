@@ -155,20 +155,24 @@ export async function listChats(courseId: string): Promise<ChatSummary[]> {
 }
 
 /**
- * POST /chats: save a new chat with its first question and answer.
- * Temporary: the browser sends the (mocked) answer. In the RAG phase the
- * server that writes the answer saves it, and `answer` leaves this call.
+ * Mock only: save a new chat with its first question and answer.
+ *
+ * With real chats, answers are saved by the SERVER in POST /api/ask
+ * (askAndSave), straight from the RAG service's reply. The browser can't
+ * send an answer to be saved: those routes were removed in the security
+ * pass (2026-11-27). So real chats need REAL_ASK too.
  */
+const SERVER_SAVES = "Answers are saved by the server (POST /api/ask). Set NEXT_PUBLIC_REAL_ASK=true with real chats.";
+
 export async function createChat(courseId: string, question: string, answer: Answer): Promise<ChatSummary> {
   if (MOCK_CHATS) return mock.createChat(courseId, question, answer);
-  const chat = await http<ChatRecord>("/chats", { method: "POST", body: JSON.stringify({ courseId, question, answer }) });
-  return toSummary(chat);
+  throw new Error(SERVER_SAVES);
 }
 
-/** POST /chats/{id}/messages: a follow-up question and its answer, in an open chat. */
+/** Mock only: a follow-up question and its answer, in an open chat (see createChat). */
 export async function addExchange(chatId: string, question: string, answer: Answer): Promise<void> {
   if (MOCK_CHATS) return mock.addExchange(chatId, question, answer);
-  await http(`/chats/${chatId}/messages`, { method: "POST", body: JSON.stringify({ question, answer }) });
+  throw new Error(SERVER_SAVES);
 }
 
 /** GET /chats/{id}/messages: everything in one chat, oldest first. */

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fake } from "@/test/fake-supabase";
 
 /*
- * Unit tests for GET/POST /api/chats, with the fake Supabase client from
+ * Unit tests for GET /api/chats (POST was removed: see below), with the fake Supabase client from
  * src/test/fake-supabase.ts (it explains how FakeQuery works). The real
  * database rules (RLS, grants, limits) are tested by pgTAP in chats.test.sql.
  */
@@ -13,7 +13,8 @@ vi.mock("@/lib/supabase/server", async () => {
 });
 
 // Import AFTER vi.mock, so the route gets the fake client.
-const { GET, POST } = await import("./route");
+const routeModule = await import("./route");
+const { GET } = routeModule;
 
 const COURSE = "00000000-0000-0000-0000-00000000c001";
 const CHAT = "11111111-1111-4111-8111-111111111111";
@@ -24,12 +25,8 @@ const chatRow = {
   pinned: false,
   updated_at: "2026-11-05T02:00:00+00:00",
 };
-const answer = { claims: ["When choices overlap."] };
 
 const get = (query: string) => GET(new Request(`http://test/api/chats${query}`));
-const post = (body: unknown) =>
-  POST(new Request("http://test/api/chats", { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) }));
-
 beforeEach(() => {
     fake.reset();
   // apiError logs the real error; keep the test output quiet.
@@ -70,66 +67,10 @@ describe("GET /api/chats", () => {
 });
 
 describe("POST /api/chats", () => {
-  it("returns 400 for a body that isn't JSON", async () => {
-    expect((await post("not json")).status).toBe(400);
-  });
-
-  it("returns 400 for an empty question, before touching the database", async () => {
-    const res = await post({ courseId: COURSE, question: "  ", answer });
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "The question is empty." });
-    expect(fake.queries).toHaveLength(0);
-  });
-
-  it("returns 401 without a session", async () => {
-    fake.claims = null;
-    expect((await post({ courseId: COURSE, question: "Hi", answer })).status).toBe(401);
-  });
-
-  it("creates the chat, titled from the question, and saves both messages", async () => {
-    fake.results = [
-      { data: chatRow, error: null }, // insert chat
-      { data: null, error: null }, // insert messages
-    ];
-    const res = await post({ courseId: COURSE, question: "When does DP beat greedy?", answer });
-    expect(res.status).toBe(201);
-    expect((await res.json()).id).toBe(CHAT);
-
-    const [chats, messages] = fake.queries;
-    expect(chats.calls[0]).toEqual(["insert", [{ course_id: COURSE, title: "When does DP beat greedy?" }]]);
-    expect(messages.table).toBe("messages");
-    expect(messages.calls[0]).toEqual([
-      "insert",
-      [[
-        { chat_id: CHAT, role: "user", content: "When does DP beat greedy?" },
-        { chat_id: CHAT, role: "assistant", content: "When choices overlap.", answer },
-      ]],
-    ]);
-  });
-
-  it("returns 403 when RLS refuses the course (not yours, not a sample)", async () => {
-    fake.results = [{ data: null, error: { code: "42501", message: "new row violates row-level security policy" } }];
-    const res = await post({ courseId: COURSE, question: "Hi", answer });
-    expect(res.status).toBe(403);
-  });
-
-  it("returns 409 with the database's message at the chat limit", async () => {
-    fake.results = [{ data: null, error: { code: "23514", message: "A demo can hold 100 chats." } }];
-    const res = await post({ courseId: COURSE, question: "Hi", answer });
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: "A demo can hold 100 chats." });
-  });
-
-  it("deletes the new chat again if saving the messages fails", async () => {
-    fake.results = [
-      { data: chatRow, error: null }, // insert chat: ok
-      { data: null, error: { code: "XX000", message: "boom" } }, // insert messages: fails
-      { data: null, error: null }, // delete chat
-    ];
-    const res = await post({ courseId: COURSE, question: "Hi", answer });
-    expect(res.status).toBe(500);
-    const undo = fake.queries[2];
-    expect(undo.table).toBe("chats");
-    expect(undo.calls).toEqual([["delete", []], ["eq", ["id", CHAT]]]);
+  // Removed in the security pass (2026-11-27): it saved an answer sent by the
+  // browser. Real answers are saved by POST /api/ask on the server. With no
+  // POST export, Next.js answers a POST with 405 Method Not Allowed.
+  it("no longer exists, so a browser can't save an answer of its own", () => {
+    expect("POST" in routeModule).toBe(false);
   });
 });

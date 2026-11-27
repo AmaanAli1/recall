@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { cleanQuestion, cleanTitle, isUuid, parseChatPatch, parseExchange, parseNewChat, titleFromQuestion } from "./chats";
+import { cleanQuestion, cleanTitle, isUuid, parseChatPatch, titleFromQuestion } from "./chats";
 
 const COURSE = "00000000-0000-0000-0000-00000000c001";
-const answer = { claims: ["When choices overlap.", "Greedy can't undo a choice."] };
 
 describe("isUuid", () => {
   it("accepts a uuid and rejects anything else", () => {
@@ -54,52 +53,6 @@ describe("titleFromQuestion", () => {
 describe("cleanQuestion", () => {
   it("keeps newlines but drops other control characters", () => {
     expect(cleanQuestion("  line one\nline\u0000 two  ")).toBe("line one\nline two");
-  });
-});
-
-describe("parseExchange", () => {
-  it("accepts a question with an answer and joins the claims as the answer text", () => {
-    const r = parseExchange({ question: " When does DP beat greedy? ", answer });
-    expect(r).toEqual({
-      ok: true,
-      value: {
-        question: "When does DP beat greedy?",
-        answerText: "When choices overlap. Greedy can't undo a choice.",
-        answer,
-      },
-    });
-  });
-
-  it("rejects an empty or missing question", () => {
-    expect(parseExchange({ question: "   ", answer }).ok).toBe(false);
-    expect(parseExchange({ answer }).ok).toBe(false);
-  });
-
-  it("rejects a question over 2,000 characters", () => {
-    expect(parseExchange({ question: "x".repeat(2001), answer }).ok).toBe(false);
-  });
-
-  it("rejects an answer without text claims", () => {
-    expect(parseExchange({ question: "Hi", answer: {} }).ok).toBe(false);
-    expect(parseExchange({ question: "Hi", answer: { claims: [1, 2] } }).ok).toBe(false);
-    expect(parseExchange({ question: "Hi", answer: ["not", "an", "object"] }).ok).toBe(false);
-  });
-
-  it("rejects an answer too big to store", () => {
-    const huge = { claims: ["ok"], sources: [{ pre: "x".repeat(70_000) }] };
-    expect(parseExchange({ question: "Hi", answer: huge })).toEqual({ ok: false, error: "That answer is too long to save." });
-  });
-
-  it("rejects a body that isn't an object", () => {
-    expect(parseExchange(null).ok).toBe(false);
-    expect(parseExchange("hello").ok).toBe(false);
-  });
-});
-
-describe("parseNewChat", () => {
-  it("needs a valid course id", () => {
-    expect(parseNewChat({ courseId: "algorithms", question: "Hi", answer })).toEqual({ ok: false, error: "Pick a course." });
-    expect(parseNewChat({ courseId: COURSE, question: "Hi", answer }).ok).toBe(true);
   });
 });
 
