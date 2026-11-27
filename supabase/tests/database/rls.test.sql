@@ -1,18 +1,18 @@
--- Security tests for demo_sessions and courses. 
+-- Security tests for demo_sessions and courses.
 --
--- Everything runs inside one transaction that is 
+-- Everything runs inside one transaction that is
 -- rolled back at the end, so no data is ever kept.
 
 begin;
 create extension if not exists pgtap with schema extensions;
 
--- How many tests we promise to run. If one silently 
--- doesn't run, pgTAP fails the file. 
-select plan(13);
+-- How many tests we promise to run. If one silently
+-- doesn't run, pgTAP fails the file.
+select plan(12);
 
--- Two fake visitors. Inserting into auth.users fires 
--- our trigger, exactly like a real anonymous sign-in. 
-insert into auth.users (id) values 
+-- Two fake visitors. Inserting into auth.users fires
+-- our trigger, exactly like a real anonymous sign-in.
+insert into auth.users (id) values
   ('00000000-0000-0000-0000-00000000000a'),
   ('00000000-0000-0000-0000-00000000000b');
 
@@ -28,9 +28,25 @@ select ok(
     where id = '00000000-0000-0000-0000-00000000000a'),
     'session code has the demo-XXXX-XX shape');
 
+-- Visitors can't create courses any more (2026-11-27),
+-- so the admin sets up a course "owned" by A. It stands
+-- for any row that isn't B's, e.g. one left over from
+-- before the change.
+insert into public.courses (session_id, name, color)
+values ('00000000-0000-0000-0000-00000000000a',
+        'Data Structures', 'rust');
+
+-- 23514 = check_violation. The colour rule still
+-- matters: the ingest script inserts courses too.
+select throws_ok($$
+    insert into public.courses (session_id, name, color)
+    values ('00000000-0000-0000-0000-00000000000a',
+            'Bad', 'pink')
+$$, '23514', null, 'unknown colours are rejected');
+
 ------------------------------------------------------
--- Act as visitor A: switch to the role the API uses. 
--- and set the "who am I" that auth.uid() reads. 
+-- Act as visitor A: switch to the role the API uses,
+-- and set the "who am I" that auth.uid() reads.
 ------------------------------------------------------
 
 set local role authenticated;
@@ -38,45 +54,19 @@ set local request.jwt.claims =
     '{"sub":"00000000-0000-0000-0000-00000000000a", "role":"authenticated"}';
 
 select is(
-    (select count(*)::int from public.demo_sessions), 
+    (select count(*)::int from public.demo_sessions),
     1, 'a visitor sees only their own session');
 
--- 23514 = check_violation. Tested BEFORE the visitor's
--- first course: after it, the one-course limit would
--- reject any insert first, and this would pass for the
--- wrong reason.
-select throws_ok($$
-    insert into public.courses (session_id, name, color)
-    values ('00000000-0000-0000-0000-00000000000a', 
-            'Bad', 'pink')
-$$, '23514', null, 'unknown colours are rejected');
-
-select lives_ok($$
-    insert into public.courses (session_id, name, color)
-    values ('00000000-0000-0000-0000-00000000000a', 
-            'Data Structures', 'rust')
-$$, 'a visitor can create a course');
-
--- One course of your own (2026-11-23). The exact message
--- matters: the API shows it to the visitor.
-select throws_ok($$
-    insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000a', 
-            'Course 2')
-$$, '23514', 'A demo can hold 1 course of your own.', 
-    'a second course of your own is blocked');
-
-select lives_ok($$ select public.touch_session() $$, 
+select lives_ok($$ select public.touch_session() $$,
     'a visitor can mark their session active');
 
--- Try to raise our own token budget. There is no 
--- update policy, so this silently changes 0 rows.
--- We check the value later as the admin.
--- A could not raise their token budget” check as they are.
-  select throws_ok($$
-      update public.demo_sessions set token_budget = 9999999
-  $$, '42501', null,
-      'visitors cannot update their session row at all');
+-- Try to raise our own token budget. Visitors only
+-- have SELECT on demo_sessions, so this is refused.
+-- We also check the value later as the admin.
+select throws_ok($$
+    update public.demo_sessions set token_budget = 9999999
+$$, '42501', null,
+    'visitors cannot update their session row at all');
 
 ------------------------------------------------------
 -- Act as visitor B, and attack A's data.
@@ -90,17 +80,21 @@ select is_empty($$
     where session_id = '00000000-0000-0000-0000-00000000000a'
 $$, 'B cannot see A''s courses');
 
--- 42501 = insufficient_privilege (RLS said no)
+-- 42501 = insufficient_privilege. Since 2026-11-27
+-- visitors have no INSERT or UPDATE grant on courses,
+-- so these fail before RLS is even asked.
 select throws_ok($$
     insert into public.courses (session_id, name)
-    values ('00000000-0000-0000-0000-00000000000a', 
+    values ('00000000-0000-0000-0000-00000000000a',
             'Sneaky')
-$$, '42501', null, 
+$$, '42501', null,
     'B cannot create a course in A''s session');
 
--- Also silently 0 rows: B can't even see the rows.
-update public.courses set name = 'hacked'
-    where session_id = '00000000-0000-0000-0000-00000000000a';
+select throws_ok($$
+    update public.courses set name = 'hacked'
+     where session_id = '00000000-0000-0000-0000-00000000000a'
+$$, '42501', null,
+    'B cannot rename A''s courses');
 
 ------------------------------------------------------
 -- Back to admin (sees everything) to check results.
@@ -109,23 +103,23 @@ update public.courses set name = 'hacked'
 reset role;
 
 select is(
-    (select token_budget from public.demo_sessions 
-        where id = '00000000-0000-0000-0000-00000000000a'), 
+    (select token_budget from public.demo_sessions
+        where id = '00000000-0000-0000-0000-00000000000a'),
     50000, 'A could not raise their token budget');
 
 select is_empty($$
     select 1 from public.courses where name = 'hacked'
-$$, 'B could not rename A''s courses');
+$$, 'no course was renamed');
 
--- Deleting the user (what cleanup will do) must
--- remove their session and course via cascades.
+-- Deleting the user (what cleanup does) must remove
+-- their session and course through the cascades.
 delete from auth.users
     where id = '00000000-0000-0000-0000-00000000000a';
 
 select is_empty($$
     select 1 from public.courses
         where session_id = '00000000-0000-0000-0000-00000000000a'
-$$, 'deleting a visitor can remove their courses');
+$$, 'deleting a visitor removes their courses');
 
 select * from finish();
 rollback;

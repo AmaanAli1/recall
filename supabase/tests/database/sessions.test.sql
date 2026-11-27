@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(11);
 
 -- Two fake ANONYMOUS visitors (C and D). Real demo 
 -- users are anonymous, and end_session() only deletes 
@@ -32,6 +32,13 @@ select throws_ok($$
 $$, '23505', null, 
   'two sample courses cannot share a name');
 
+-- C and D each own a course, to check end_session()
+-- removes only the caller's. Visitors can't create
+-- courses since 2026-11-27, so the admin sets them up.
+insert into public.courses (session_id, name) values
+  ('00000000-0000-0000-0000-00000000000c', 'C notes'),
+  ('00000000-0000-0000-0000-00000000000d', 'D notes');
+
 ------------------------------------------------------
 -- As visitor C
 ------------------------------------------------------
@@ -40,29 +47,29 @@ set local role authenticated;
 set local request.jwt.claims = 
   '{"sub":"00000000-0000-0000-0000-00000000000c","role":"authenticated"}';
 
--- C gets one course of their own for the tests below.
-insert into public.courses (session_id, name)
-values ('00000000-0000-0000-0000-00000000000c', 'C notes');
-
 select is(
     (select count(*)::int from public.courses), 
     2, 'a visitor sees the sample plus their own');
 
--- Updates and deletes the policies don't allow change 
--- 0 rows without an error. We check as admin later.
-update public.courses set name = 'hacked'
-  where session_id is null;
-delete from public.courses where session_id is null;
+-- 42501: visitors have no UPDATE or DELETE grant on
+-- courses (2026-11-27). Inside throws_ok, because an
+-- error outside it would abort the test transaction.
+-- We also check the sample as admin later.
+select throws_ok($$
+  update public.courses set name = 'hacked'
+   where session_id is null
+$$, '42501', null, 'a visitor cannot rename the sample course');
+
+select throws_ok($$
+  delete from public.courses where session_id is null
+$$, '42501', null, 'a visitor cannot delete the sample course');
 
 ------------------------------------------------------
--- As visitor D: their own course, then Start fresh
+-- As visitor D: Start fresh
 ------------------------------------------------------
 
 set local request.jwt.claims = 
   '{"sub":"00000000-0000-0000-0000-00000000000d","role":"authenticated"}';
-
-insert into public.courses (session_id, name)
-values ('00000000-0000-0000-0000-00000000000d', 'D notes');
 
 select is(
   (select count(*)::int from public.courses),
