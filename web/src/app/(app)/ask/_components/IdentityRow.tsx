@@ -99,7 +99,7 @@ export function IdentityRow({ settings, onSettings }: { settings: Settings; onSe
           </div>
 
           <Toggle id="set-strict" label="Only answer from the book" hint="Say “not in the book” instead of guessing." on={settings.strict} onChange={(v) => set({ strict: v })} />
-          <Toggle id="set-timing" label="Show retrieval timing" hint="The embed, search, rerank, generate bar." on={settings.timing} onChange={(v) => set({ timing: v })} />
+          <Toggle id="set-timing" label="Show retrieval timing" hint="The rewrite, embed, search and generate bar." on={settings.timing} onChange={(v) => set({ timing: v })} />
           <Toggle id="set-motion" label="Reduce motion" hint="Turns off animations. Follows your system by default." on={settings.calm} onChange={(v) => set({ calm: v })} />
         </div>
       </div>

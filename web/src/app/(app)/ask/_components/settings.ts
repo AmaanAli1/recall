@@ -3,7 +3,7 @@ export interface Settings {
   length: "short" | "detailed";
   /** Say "not in the book" instead of guessing. */
   strict: boolean;
-  /** Show the embed/search/rerank/generate bar. */
+  /** Show the rewrite/embed/search/generate bar. */
   timing: boolean;
   /** Kill transitions and animations inside the workspace. */
   calm: boolean;

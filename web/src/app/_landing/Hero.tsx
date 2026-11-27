@@ -101,7 +101,7 @@ export function Hero() {
             <div className="ear bg-sheet px-7 pb-6 pt-[26px]">
               <div className="flex justify-between font-mono text-xs text-ink-2">
                 <span>
-                  <span className="text-red">[1]</span> <span translate="no">Week6_DynamicProgramming.pdf</span>
+                  <span className="text-red">[1]</span> <span translate="no">Erickson_Ch3_DynamicProgramming.pdf</span>
                 </span>
                 <span className="num">p.&nbsp;4</span>
               </div>
@@ -113,7 +113,7 @@ export function Hero() {
                 and store the results we reuse.
               </p>
               <div className="mt-[22px] flex items-center gap-3 font-mono text-xs text-ink-2">
-                <span>rerank score</span>
+                <span>similarity</span>
                 <span className="h-0.5 flex-auto bg-line">
                   <span className="block h-full w-[82%] bg-good" />
                 </span>
