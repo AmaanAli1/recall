@@ -65,7 +65,7 @@ function warmUp(): Promise<void> {
  * Runs the boot sequence. Each step ticks only when its real request resolves.
  * Results are cached, so Replay and Retry never create a second session.
  */
-export function useDemoBoot() {
+export function useDemoBoot(getCaptchaToken?: () => Promise<string>) {
   const [state, setState] = useState<BootState>(INITIAL);
   const runId = useRef(0);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -122,7 +122,9 @@ export function useDemoBoot() {
 
       const tasks: Array<() => Promise<void>> = [
         async () => {
-          session.current ??= await createDemoSession();
+          // A new session needs a fresh human-check token (when the site has one).
+          // Cached sessions skip both: Replay and Retry never make a second one.
+          session.current ??= await createDemoSession(getCaptchaToken ? await getCaptchaToken() : undefined);
           const sid = session.current.id;
           setState((prev) => ({ ...prev, sessionId: sid }));
         },
@@ -156,7 +158,7 @@ export function useDemoBoot() {
       }
       setState((prev) => ({ ...prev, issued: true, everIssued: true, stampDate: stampFor(new Date()) }));
     },
-    [clearTimers, sleep],
+    [clearTimers, sleep, getCaptchaToken],
   );
 
   // Strand any in-flight run and drop its timers when the page unmounts.

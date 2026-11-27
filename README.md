@@ -242,12 +242,13 @@ Recall is a public, anonymous demo, so it's built as **defence in depth**: each 
 
 ```mermaid
 flowchart LR
-    R(["Request"]) --> L1["1 · Proxy"] --> L2["2 · Route<br/>handlers"] --> L3["3 · Internal<br/>key"] --> L4["4 · Visitor<br/>token"]
+    R(["Request"]) --> L0["0 · Human<br/>check"] --> L1["1 · Proxy"] --> L2["2 · Route<br/>handlers"] --> L3["3 · Internal<br/>key"] --> L4["4 · Visitor<br/>token"]
     L4 --> L5["5 · Rate limit<br/>+ budget"] --> L6["6 · GRANTs"] --> L7["7 · Row-level<br/>security"] --> L8["8 · Spend<br/>caps"]
 ```
 
 | # | Layer | What it stops |
 |---|---|---|
+| 0 | **Human check** (new sessions only) | Cloudflare Turnstile in Managed mode on "Try the demo"; the one-time token is verified by Supabase Auth, so scripts can't mint sessions (each with its own token budget). No token → 400 before Supabase is called; a forged or reused one → 400 |
 | 1 | **Proxy** (session gate) | No session → 307 to `/demo`; `?next=` only through `safeNext()`, so no open redirects |
 | 2 | **Route handlers** | Identity comes from `getClaims()`, never from the client; bodies are validated, never passed straight to the database |
 | 3 | **Internal key** | Only the Next.js server can call the API |
@@ -447,7 +448,7 @@ Passing tests only mean something if they would have failed on broken code. The 
 | Principle | Where it shows |
 |---|---|
 | **Least privilege** | Explicit GRANTs per table; the API holds no database password; a deploy role that can push one image and update two functions |
-| **Defence in depth** | 8 security layers, each assuming the previous one failed; browser checks are UX, the database enforces the same rule |
+| **Defence in depth** | 9 security layers, each assuming the previous one failed; browser checks are UX, the database enforces the same rule |
 | **Fail open for optional steps, fail closed for security** | A failed rewrite falls back to the original question; a failed auth check returns 401 |
 | **Untrusted input stays data** | PDF text and chat history are passed to the model as data; history is loaded server-side, never from the browser |
 | **Small, reviewable changes** | GitHub Flow, one short-lived branch per change, squash-merged with Conventional Commit titles |

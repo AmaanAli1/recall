@@ -69,10 +69,18 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ---------- Demo sessions ----------
 
-/** POST /demo-sessions: create an anonymous session (sets the session cookie). */
-export function createDemoSession(): Promise<DemoSession> {
-  return MOCK_SESSIONS ? mock.createDemoSession() : http("/demo-sessions", { method: "POST" });
+/**
+ * POST /demo-sessions: create an anonymous session (sets the session cookie).
+ * `captchaToken` is the Cloudflare Turnstile token from the /demo page; the
+ * server passes it to Supabase, which verifies it. The mock ignores it.
+ */
+export function createDemoSession(captchaToken?: string): Promise<DemoSession> {
+  if (MOCK_SESSIONS) return mock.createDemoSession();
+  return http("/demo-sessions", { method: "POST", body: JSON.stringify(captchaToken ? { captchaToken } : {}) });
 }
+
+/** True when sessions are real AND a Turnstile site key is set: /demo must run the human check. */
+export const CAPTCHA_ON = !MOCK_SESSIONS && (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "") !== "";
 
 /** GET /demo-sessions/me: the current session, or null if there isn't one. */
 export async function getDemoSession(): Promise<DemoSession | null> {
