@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
-import { getDemoSession } from "@/lib/api";
+import { CAPTCHA_ON, getDemoSession } from "@/lib/api";
+import { captchaSiteKey } from "@/lib/captcha";
 import { markFreshArrival } from "@/lib/demo-flags";
 import { DEFAULT_NEXT, NEXT_PARAM, safeNext } from "@/lib/session-gate";
 import styles from "../demo.module.css";
 import { LibraryCard } from "./LibraryCard";
 import { useDemoBoot } from "./useDemoBoot";
+import { useHumanCheck } from "./useHumanCheck";
 
 /** The URL doesn't change while /demo is open, so there's nothing to subscribe to. */
 const noSubscribe = () => () => {};
@@ -31,7 +33,9 @@ function leaveTo(path: string, replace = false) {
  * proxy.ts). `next` is checked by safeNext, so it can only ever be Ask or Library.
  */
 export function DemoBoot() {
-  const { state, start, replay, retry } = useDemoBoot();
+  // The human check (Cloudflare Turnstile) runs only for real sessions with a site key.
+  const { container: humanCheckBox, getToken } = useHumanCheck(captchaSiteKey());
+  const { state, start, replay, retry } = useDemoBoot(CAPTCHA_ON ? getToken : undefined);
   // Not useSearchParams: /demo is a static page, and that would need a Suspense
   // boundary. On the server (and while hydrating) there's no URL: Ask.
   const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
@@ -82,6 +86,9 @@ export function DemoBoot() {
       </p>
 
       <LibraryCard state={state} onRetry={retry} />
+
+      {/* Turnstile renders here. Hidden unless Cloudflare asks for a click (Managed mode). */}
+      {CAPTCHA_ON && <div ref={humanCheckBox} className="mt-6 flex justify-center empty:hidden" />}
 
       {/* Inert until the first issue so nobody tabs into an invisible button; stays live during a Replay. */}
       <div

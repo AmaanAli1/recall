@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
+import { captchaRequired, readCaptchaToken } from "@/lib/captcha";
 import { apiError } from "@/lib/supabase/errors";
 import { toDemoSession } from "@/lib/supabase/mappers";
 import { createClient } from "@/lib/supabase/server";
+
+/** Shown when the human check is missing or Supabase rejects its token. */
+export const CAPTCHA_FAILED = "We couldn't confirm you're human. Try again.";
 
 /**
  * POST /api/demo-sessions: start a demo session ("Try the demo").
  *
  * 1. If the visitor already has a session (a valid token in their cookies),
- *    reuse it. A double click or a refresh must not create a second one.
- * 2. Otherwise sign them in anonymously. Supabase creates an auth user and
- *    sets the session cookies; our handle_new_session() trigger creates the
- *    matching demo_sessions row with a demo-XXXX-XX code.
- * 3. Read that row back (RLS: you can only read your own) and return it.
+ *    reuse it. A double click or a refresh must not create a second one,
+ *    and it needs no human check: they passed one when it was created.
+ * 2. Otherwise they need a CAPTCHA token (Cloudflare Turnstile, sent by the
+ *    /demo page as { captchaToken }). No token → 400 before Supabase is
+ *    even called.
+ * 3. Sign them in anonymously WITH that token. Supabase verifies it against
+ *    Cloudflare; a fake or reused token fails with code "captcha_failed".
+ *    On success Supabase sets the session cookies, and our
+ *    handle_new_session() trigger creates the demo_sessions row.
+ * 4. Read that row back (RLS: you can only read your own) and return it.
  */
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
 
   // getClaims() verifies the token in the cookies. claims.sub = the user id.
@@ -21,8 +30,25 @@ export async function POST() {
   let userId = claimsData?.claims.sub;
 
   if (!userId) {
-    const { data, error } = await supabase.auth.signInAnonymously();
+    // Read the token only when we need one. The body is untrusted:
+    // anything unusable comes back as null.
+    const captchaToken = await readCaptchaToken(request);
+
+    // Fail closed: when the site has a CAPTCHA, no token means no session.
+    if (captchaRequired() && !captchaToken) {
+      return apiError(CAPTCHA_FAILED, 400);
+    }
+
+    // Pass the token on for Supabase to verify. (With no site key, e.g. a
+    // local real-sessions build, there's no token and no options.)
+    const { data, error } = await supabase.auth.signInAnonymously(
+      captchaToken ? { options: { captchaToken } } : undefined,
+    );
     if (error || !data.user) {
+      // Supabase checked the token with Cloudflare and said no.
+      if (error?.code === "captcha_failed") {
+        return apiError(CAPTCHA_FAILED, 400, error);
+      }
       // 429 = the rate limit we set in Phase 2 (30 per hour per IP).
       if (error?.status === 429) {
         return apiError(
