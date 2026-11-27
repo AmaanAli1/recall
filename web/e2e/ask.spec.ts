@@ -148,6 +148,14 @@ test.describe("ask", () => {
     await expect(page.getByRole("link", { name: "See its chapters in Library →" })).toHaveAttribute("href", "/library");
   });
 
+  test("the timing bar shows only steps Recall really runs (no reranker)", async ({ page }) => {
+    await page.goto("/ask");
+    const bar = page.getByRole("group", { name: "Time spent per step" }).first();
+    await expect(bar).toContainText("search");
+    await expect(bar).toContainText("generate");
+    await expect(bar).not.toContainText("rerank");
+  });
+
   test("a chat can be renamed inline", async ({ page }) => {
     await page.goto("/ask");
     const chats = page.getByRole("navigation", { name: "Chats" });

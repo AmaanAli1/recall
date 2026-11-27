@@ -12,6 +12,14 @@ test.describe("landing page", () => {
     await expect(page).toHaveURL(/\/demo$/);
   });
 
+  test("describes only what's built: no reranker or keyword search, and the hero cites a real chapter", async ({ page }) => {
+    // Recall has vector search only (2026-11-27). "Reranking planned" on the spec sheet is fine; claiming it runs is not.
+    await page.goto("/");
+    await expect(page.getByText(/rerank score|then rerank|keyword \+ vector/i)).toHaveCount(0);
+    await expect(page.getByText("Erickson_Ch3_DynamicProgramming.pdf").first()).toBeVisible();
+    await expect(page.getByText("Week6_DynamicProgramming.pdf")).toHaveCount(0);
+  });
+
   test("nav How it works scrolls the pipeline section into view", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "How it works" }).click();

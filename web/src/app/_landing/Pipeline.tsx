@@ -53,7 +53,7 @@ function PlayIcon() {
   );
 }
 
-/** "From pages to proof": the animated retrieval → rerank → answer diagram. */
+/** "From pages to proof": the animated retrieval → similarity → answer diagram. */
 export function Pipeline() {
   const [paused, setPaused] = useState(false);
   // Only animate the icon/label swap after the first real toggle, not on page load.
@@ -151,7 +151,7 @@ export function Pipeline() {
                 </div>
               ))}
 
-              {/* Rerank gauge hub: the needle sweeps to each passage's score in time with the flows. */}
+              {/* Similarity gauge hub: the needle sweeps to each passage's score in time with the flows. */}
               <div className="absolute left-[420px] top-[140px] box-border h-[200px] w-[200px] rounded-full border border-line-2 bg-paper shadow-[0_2px_2px_rgba(70,45,20,0.06),0_18px_40px_-12px_rgba(70,45,20,0.22),inset_0_0_0_6px_var(--sheet)]">
                 <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true" className="absolute -left-px -top-px">
                   <path d="M32.4 139 A78 78 0 0 1 100 22" fill="none" stroke="var(--bad)" strokeOpacity="0.8" strokeWidth="7" />
@@ -162,9 +162,9 @@ export function Pipeline() {
                   </g>
                   <circle cx="100" cy="100" r="8" fill="var(--paper)" stroke="var(--ink)" strokeWidth="2.5" />
                 </svg>
-                <p className="absolute inset-x-0 top-32 m-0 text-center font-mono text-xs text-ink-2">rerank score</p>
+                <p className="absolute inset-x-0 top-32 m-0 text-center font-mono text-xs text-ink-2">similarity</p>
               </div>
-              <p className="absolute left-[380px] top-[354px] m-0 w-[280px] text-center font-mono text-xs text-ink-2">keyword + vector search, then rerank</p>
+              <p className="absolute left-[380px] top-[354px] m-0 w-[280px] text-center font-mono text-xs text-ink-2">vector search, best matches first</p>
 
               {/* Score buckets */}
               {OUTS.map((o) => (

@@ -20,7 +20,7 @@ Settings come from environment variables or `api/.env` (copy `.env.example`; nev
 | Method | Path | What |
 |---|---|---|
 | GET | `/health` | Liveness check for the load balancer: `{"ok": true}` |
-| POST | `/v1/answer` | `{ courseId, question }` → `{ answer, usage }`: a cited answer from the course's passages |
+| POST | `/v1/answer` | `{ courseId, question, history? }` → `{ answer, usage }`: a cited answer from the course's passages. `history` (≤ 10 earlier turns, loaded by Next.js from the database) lets a follow-up be rewritten to stand alone first |
 
 `/v1/answer` needs two headers: `X-Recall-Internal` (the shared `INTERNAL_KEY`, so only Next.js can call it) and `Authorization: Bearer <visitor's Supabase token>`. The service talks to Supabase with the publishable key plus that token, so RLS decides what it can read; it holds no database password. Errors: 401 (bad key or token), 422 (bad body), 429 (5 per minute, or the session's token budget is spent), 502 (OpenAI or Supabase failed), 503 (the OpenAI project's monthly limit is reached).
 

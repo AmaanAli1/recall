@@ -1,6 +1,6 @@
 <div align="center">
 
-# `[ / / ]` recall
+<h1><img src="docs/images/logo.png" alt="Recall" width="330"></h1>
 
 **Ask the textbook. Get answers cited to the page.**
 
@@ -29,8 +29,9 @@ An AI study assistant built on retrieval-augmented generation (RAG), with its ow
 - [Complexity and cost](#complexity-and-cost)
 - [Security model](#security-model)
 - [AWS and deployment](#aws-and-deployment)
+- [Environments](#environments)
 - [Design decisions](#design-decisions)
-- [Testing](#testing)
+- [Testing and quality engineering](#testing-and-quality-engineering)
 - [Run it locally](#run-it-locally)
 - [Repository layout](#repository-layout)
 - [Known limits](#known-limits)
@@ -286,6 +287,48 @@ flowchart LR
 
 ---
 
+## Environments
+
+Four environments, each with its **own database and its own API**. Nothing outside production can read or write production data.
+
+```mermaid
+flowchart LR
+    subgraph LOCAL["💻 Local"]
+        direction TB
+        M["<b>Mock mode</b><br/>in-memory API<br/>no keys, no network"]
+        SI["<b>Postgres stand-in</b><br/>2 clusters: with and<br/>without default grants"]
+    end
+    subgraph PREVIEW["🔍 Preview (every PR)"]
+        direction TB
+        VP["Vercel preview"] --> SS[("Supabase<br/>recall-staging")]
+        VP --> LS["λ recall-api-staging"]
+    end
+    subgraph PROD["🚀 Production"]
+        direction TB
+        VPR["Vercel production"] --> SP[("Supabase<br/>recall")]
+        VPR --> LP["λ recall-api"]
+    end
+    LOCAL -->|"pull request"| PREVIEW -->|"squash-merge"| PROD
+```
+
+| | Local (mock) | Local stand-in | Preview | Production |
+|---|---|---|---|---|
+| **Frontend** | `next dev` / `next start` | n/a | Vercel preview, one per PR | Vercel production |
+| **Database** | none: an in-memory mock API | Postgres 16 + pgvector + pg_cron + pgTAP, two clusters | Supabase **staging** | Supabase **production** |
+| **RAG API** | none | the real script entry points | Lambda **staging** | Lambda **production** |
+| **Used for** | UI work, Vitest, Playwright | pgTAP on both database flavours; end-to-end runs of the ingest and Dyno scripts | Reviewing a PR on real data; verifying migrations before production | Visitors |
+| **Secrets** | none | none | staging keys only | production keys only |
+
+**How the environments stay honest:**
+
+- **Feature flags, not branches.** `NEXT_PUBLIC_REAL_SESSIONS`, `NEXT_PUBLIC_REAL_CHATS` and `NEXT_PUBLIC_REAL_ASK` switched each layer from the mock to the real backend one at a time, so the UI shipped and was tested long before the backend existed. `NEXT_PUBLIC_` values are baked in at build time, so a flag is always turned on in **Preview first**, tested, then in Production.
+- **Staging and production are deliberately different Supabase projects**, and they differ in one way that matters: production (an older project) has Supabase's **default table grants**, staging doesn't. A permissions bug once surfaced only on staging (`42501`, permission denied), because the code had silently relied on those defaults. Since then every table gets **explicit GRANTs pinned by tests**, and the local stand-in runs every pgTAP test on **both flavours**: one cluster with default grants, one without.
+- **Migrations go staging → verify → production → verify**, with verification queries copied from the schema, and the CLI's linked project checked before every push.
+- **Each Lambda has its own internal key**, so a staging key can't call production.
+- **A standby switch** (`NEXT_PUBLIC_DEMO_STANDBY`) can close the public demo in production with an environment variable and a redeploy, no code change, while previews keep working.
+
+---
+
 ## Design decisions
 
 <details open>
@@ -345,16 +388,72 @@ A recruiter or student should be able to try it in one click. Supabase's anonymo
 
 ---
 
-## Testing
+## Testing and quality engineering
+
+```mermaid
+flowchart LR
+    subgraph B["🖥️ Browser"]
+        E2E["<b>Playwright · 87</b><br/>user flows · desktop + phone<br/>axe accessibility"]
+    end
+    subgraph W["▲ Next.js"]
+        V["<b>Vitest · 289</b><br/>components · route handlers<br/>API contracts"]
+    end
+    subgraph A["🐍 FastAPI"]
+        P["<b>pytest · 166</b><br/>ingest · answer pipeline<br/>rewriting · metrics"]
+    end
+    subgraph D["🐘 Postgres"]
+        T["<b>pgTAP · 105</b><br/>RLS · GRANTs · limits<br/>cascades · clean-up"]
+    end
+    B --> W --> A --> D
+    DY["📏 <b>Dyno</b><br/>retrieval quality<br/>33 labelled questions"] -.->|"measures what<br/>tests can't"| A
+```
 
 | Suite | Count | What it covers |
 |---|---:|---|
-| **pgTAP** | 105 | Row-level security, GRANTs, limits, clean-up, cascades: run on a throwaway Supabase in CI |
-| **pytest** | 166 | Extraction, chunking, embedding, the answer pipeline, rewriting, rate limiting, Dyno's metrics |
-| **Vitest** | 289 | Components, route handlers, API contracts, the runs file's shape |
-| **Playwright** | 85 | End-to-end flows at desktop and phone width, plus axe accessibility checks |
+| **pgTAP** | 105 | Row-level security (one visitor attacking another's rows), exact GRANTs per role, per-session limits, cascades, the hourly clean-up. Each file runs in a transaction that's rolled back |
+| **pytest** | 166 | PDF extraction and glyph recovery, chunk boundaries, embedding batches, the answer endpoint's every error path (401 / 422 / 429 / 502 / 503), rewriting and its fallback, rate limiting, Dyno's metrics and bootstrap |
+| **Vitest** | 289 | Components, route handlers (with Supabase faked), the API contract shared by the mock and the real client, the runs file's shape |
+| **Playwright** | 87 | End-to-end flows at desktop and phone width, axe accessibility audits (WCAG 2.1 A/AA) on every screen, no sideways scroll at 390 px |
+| **Dyno** | 33 questions | Not a pass/fail test: it measures retrieval quality, so changes are judged on numbers, not impressions |
 
-Habits that kept these honest: new tests are run against the old code first (they must fail), deliberate bugs are planted to prove the tests catch them, boundary values get test data *at* the boundary, and the real entry points are run end to end against a local Postgres when unit tests can't reach them.
+### The CI gate
+
+Every pull request must pass **8 required checks** before it can merge into a protected `main`. Path filters skip suites a change can't affect, so a README change doesn't rebuild the API image.
+
+| Check | What it runs |
+|---|---|
+| `lint` · `typecheck` | ESLint; `next typegen` + `tsc --noEmit` |
+| `unit` | Vitest |
+| `e2e` | a production build, then Playwright on Chromium |
+| `rls-tests` | a throwaway Supabase (`supabase start`), every migration, then `supabase test db` |
+| `api-lint` · `api-test` | `ruff check` + `ruff format --check`; pytest, with `uv sync --locked` |
+| `api-image` | builds the Docker image, starts it **with no secrets** and checks `/health`, checks no secrets, PDFs or tests are inside, and that it runs as the non-root user |
+
+### How the tests are kept honest
+
+Passing tests only mean something if they would have failed on broken code. The habits behind these suites:
+
+- **Every new test fails first.** New Playwright tests are run against the old code (in a separate `git worktree`) to prove they detect the change; new pgTAP tests are run once *without* the new migration.
+- **Planted bugs (manual mutation testing).** Before each PR, deliberate bugs are introduced: an off-by-one in a threshold, a dropped grant, a kept policy, a renamed link. Every one must make a test fail. When one slipped through, a test was added; twice, the "bug" turned out to be dead code, which was deleted.
+- **Boundary values get data *at* the boundary:** similarity 0.249 / 0.25 / 0.3 around the 0.25 threshold, not just "high" and "low".
+- **Assert the right error, not just an error.** A test expecting `check_violation` once passed for the wrong reason, because a different rule raised the same code first. Tests now check the code *and* set up state so only the rule under test can fire.
+- **Contract tests at every boundary between programs:** the website validates the Python script's JSON at build time, and a test compares the page's question text with `golden.toml` word for word, so the two programs can't drift apart.
+- **Run the real entry point end to end** when unit tests can't reach the wiring. Running the Dyno script against a local Postgres loaded with the real 327 passages found a bug that would have made every real run refuse to start, after all unit tests had passed.
+- **Reproduce before fixing.** A bug that only appeared on the Vercel preview (a prefetched redirect cached before the session existed) was reproduced locally with a fake Supabase auth server and a forged session cookie, then fixed and verified in the same setup.
+- **Look at the result.** Every visual change is checked in screenshots at desktop and 390 px; a test can't tell you a link doesn't look like a link.
+
+### Engineering principles
+
+| Principle | Where it shows |
+|---|---|
+| **Least privilege** | Explicit GRANTs per table; the API holds no database password; a deploy role that can push one image and update two functions |
+| **Defence in depth** | 8 security layers, each assuming the previous one failed; browser checks are UX, the database enforces the same rule |
+| **Fail open for optional steps, fail closed for security** | A failed rewrite falls back to the original question; a failed auth check returns 401 |
+| **Untrusted input stays data** | PDF text and chat history are passed to the model as data; history is loaded server-side, never from the browser |
+| **Small, reviewable changes** | GitHub Flow, one short-lived branch per change, squash-merged with Conventional Commit titles |
+| **Reproducible builds** | Locked dependencies (`uv.lock`, `package-lock.json`); images tagged by commit, built once, promoted from staging to production unchanged |
+| **Measure, don't guess** | Dyno for retrieval quality, with sample sizes and intervals on every number; prices compared before choosing a host |
+| **No made-up numbers** | Unmeasured metrics show "not measured", not a placeholder; small samples say so |
 
 ---
 
@@ -435,4 +534,5 @@ recall/
 ## Credits
 
 - **Textbook:** Jeff Erickson, [*Algorithms*](https://jeffe.cs.illinois.edu/teaching/algorithms/book/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Chapters 1, 3, 4 and 8 are used unmodified as the demo's course; the PDFs are not stored in this repository.
+- **Code:** [MIT License](LICENSE).
 - Built by **Amaan Ali** ([@AmaanAli1](https://github.com/AmaanAli1)), Computer Science at Wilfrid Laurier University.

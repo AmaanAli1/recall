@@ -55,7 +55,7 @@ export const ANSWERS: Record<string, Answer> = {
     courseId: SAMPLE_COURSE_IDS.algorithms,
     claims: [
       "Use dynamic programming when a problem has overlapping subproblems and optimal substructure, but the greedy choice can rule out the best answer",
-      "The lecture’s example is 0/1 knapsack: taking the best value-per-weight item first can miss the optimal set",
+      "The book’s example is 0/1 knapsack: taking the best value-per-weight item first can miss the optimal set",
       "Greedy still wins when the greedy-choice property holds, as in fractional knapsack",
     ],
     sources: [
@@ -67,7 +67,7 @@ export const ANSWERS: Record<string, Answer> = {
       { file: "Erickson_Ch4_GreedyAlgorithms.pdf", page: 22, score: 0.41 },
       { file: "Erickson_Ch1_Recursion.pdf", page: 9, score: 0.33 },
     ],
-    timing: { embed: 0.1, search: 0.3, rerank: 0.6, generate: 0.4 },
+    timing: { embed: 0.1, search: 0.3, rerank: 0, generate: 0.4 },
     followUps: ["Walk me through the knapsack table", "Quiz me on this"],
   },
   dj: {
@@ -84,7 +84,7 @@ export const ANSWERS: Record<string, Answer> = {
       { n: 3, file: "Erickson_Ch8_ShortestPaths.pdf", page: 33, score: 0.73, pre: "Bellman-Ford ", hit: "relaxes all edges |V| − 1 times", post: ", then one more pass to detect a negative cycle…" },
     ],
     dropped: [{ file: "Erickson_Ch1_Recursion.pdf", page: 21, score: 0.38 }],
-    timing: { embed: 0.1, search: 0.3, rerank: 0.5, generate: 0.4 },
+    timing: { embed: 0.1, search: 0.3, rerank: 0, generate: 0.4 },
     followUps: ["Show me a counterexample graph", "Quiz me on this"],
   },
   ms: {
@@ -104,7 +104,7 @@ export const ANSWERS: Record<string, Answer> = {
       { file: "Erickson_Ch3_DynamicProgramming.pdf", page: 2, score: 0.4 },
       { file: "Erickson_Ch8_ShortestPaths.pdf", page: 4, score: 0.31 },
     ],
-    timing: { embed: 0.1, search: 0.2, rerank: 0.5, generate: 0.4 },
+    timing: { embed: 0.1, search: 0.2, rerank: 0, generate: 0.4 },
     followUps: ["Draw the recursion tree", "Quiz me on this"],
   },
 

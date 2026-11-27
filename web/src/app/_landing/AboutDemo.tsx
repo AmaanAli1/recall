@@ -44,20 +44,16 @@ const FACTS: readonly { term: string; detail: React.ReactNode }[] = [
 
 export function AboutDemo() {
   return (
-    <section id="about-this-demo" aria-labelledby="about-h" className="relative mx-auto flex max-w-[1200px] scroll-mt-6 flex-wrap gap-14 px-6 pb-24 pt-12">
-      <div className="min-w-0 flex-[1_1_320px]">
-        <h2 id="about-h" className="m-0 text-[46px] font-normal leading-[1.06] tracking-[-0.032em]">
-          About this demo.
-        </h2>
-        <p className="mb-0 mt-[18px] max-w-[24em] text-[17px] leading-[1.6] text-ink-2">
-          Recall is a portfolio project: a study assistant built on retrieval, with its own benchmark. Here’s what the public demo covers.
-        </p>
-      </div>
-      <div className="sheet relative min-w-0 flex-[2_1_560px]">
+    <section id="about-this-demo" aria-labelledby="about-h" className="relative mx-auto max-w-[1200px] scroll-mt-6 px-6 pb-24 pt-12">
+      <h2 id="about-h" className="m-0 text-[46px] font-normal leading-[1.06] tracking-[-0.032em]">About this demo.</h2>
+      <p className="mb-0 mt-[18px] max-w-[40em] text-[17px] leading-[1.6] text-ink-2">
+        Recall is a portfolio project: a study assistant built on retrieval, with its own benchmark. Here’s what the public demo covers.
+      </p>
+      <div className="sheet relative mt-10">
         <div className="ear bg-line-2 p-px">
-          <dl className="ear m-0 bg-sheet px-[30px] pb-3 pt-2">
+          <dl className="ear m-0 grid bg-sheet px-[30px] py-3 md:grid-cols-2 md:gap-x-12">
             {FACTS.map(({ term, detail }, i) => (
-              <div key={term} className={`py-[17px] ${i === 0 ? "" : "border-t border-line"}`}>
+              <div key={term} className={`border-line py-[17px] ${i === 0 ? "" : "border-t"} ${i === 1 ? "md:border-t-0" : ""} ${i === FACTS.length - 1 ? "md:col-span-2" : ""}`}>
                 <dt className="font-mono text-xs uppercase tracking-[0.1em] text-ink-2">{term}</dt>
                 <dd className="m-0 mt-1.5 text-base leading-relaxed">{detail}</dd>
               </div>
