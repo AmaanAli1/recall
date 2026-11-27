@@ -26,3 +26,10 @@
 @media (prefers-reduced-motion:reduce){.fill{animation:none}
 .man,.body,.arm,.spark,.wipe,.breath,.drop{animation:none}
 .arm{transform:rotate(-10deg)}}
+
+/* All phases done: a solid green bar, and the hammer stays down (no strikes, sparks, wipes or sweat).
+   Two-class selectors, so they also win over the reduced-motion rules above. */
+.done .fill{background-color:var(--good);background-image:none;animation:bwGrow 1.6s var(--ease-out) .3s backwards}
+.done .arm,.done .spark,.done .wipe,.done .breath,.done .drop{animation:none}
+.done .arm{transform:rotate(120deg)}
+.done .spark,.done .drop{opacity:0}

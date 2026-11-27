@@ -1,4 +1,4 @@
-import { BUILD, PHASES } from "@/lib/build-status";
+import { BUILD, BUILD_COMPLETE, PHASES, VERSION } from "@/lib/build-status";
 import s from "./build-status.module.css";
 
 /**
@@ -6,18 +6,23 @@ import s from "./build-status.module.css";
  * bar, then works in a 10-second loop: three hammer strikes, a break (hammer down,
  * wipes his brow, sweats, catches his breath), and back to work.
  * Pure CSS animation, no JavaScript. With reduced motion he just stands there.
+ *
+ * Once every phase is done (launch, 2026-11-27) the bar fills, turns green,
+ * and he puts the hammer down for good: no more strikes, sparks or sweat.
  */
 export function BuildStatus() {
   const n = PHASES.length;
-  const pct = ((BUILD.current + BUILD.progress) / n) * 100;
+  const pct = BUILD_COMPLETE ? 100 : ((BUILD.current + BUILD.progress) / n) * 100;
   const done = PHASES.slice(0, BUILD.current);
   const now = PHASES[BUILD.current];
   // People count phases from 1; PHASES is indexed from 0.
-  const label = `Build progress: Phase ${BUILD.current + 1} of ${n}, ${now}. ${done.join(" and ")} ${done.length === 1 ? "is" : "are"} done.`;
+  const label = BUILD_COMPLETE
+    ? `Build complete: all ${n} phases done (${PHASES.join(", ")}). ${VERSION} shipped.`
+    : `Build progress: Phase ${BUILD.current + 1} of ${n}, ${now}. ${done.join(" and ")} ${done.length === 1 ? "is" : "are"} done.`;
   const title = PHASES.map((p, i) => `${i + 1} ${p}${i < BUILD.current ? " ✓" : i === BUILD.current ? " (building)" : ""}`).join(" · ");
 
   return (
-    <div className={s.bw} role="img" aria-label={label} title={title} style={{ "--p": `${pct.toFixed(1)}%` } as React.CSSProperties}>
+    <div className={`${s.bw} ${BUILD_COMPLETE ? s.done : ""}`} role="img" aria-label={label} title={title} style={{ "--p": `${pct.toFixed(1)}%` } as React.CSSProperties}>
       <div className={s.track}>
         <div className={s.fill} />
         {PHASES.slice(1).map((p, i) => (
@@ -47,10 +52,16 @@ export function BuildStatus() {
         </svg>
       </div>
       <p className={`${s.cap} num`}>
-        <span>
-          Building <strong className="font-medium text-ink">Phase {BUILD.current + 1}: {now}</strong>
-        </span>
-        <span className="font-mono text-xs text-ink-3">{BUILD.current} of {n} done</span>
+        {BUILD_COMPLETE ? (
+          <span>
+            Shipped <strong className="font-medium text-ink">{VERSION}</strong>
+          </span>
+        ) : (
+          <span>
+            Building <strong className="font-medium text-ink">Phase {BUILD.current + 1}: {now}</strong>
+          </span>
+        )}
+        <span className="font-mono text-xs text-ink-3">{Math.min(BUILD.current, n)} of {n} done</span>
       </p>
     </div>
   );

@@ -5,14 +5,9 @@
  * migration). These run first so a visitor gets a clear 400 with a
  * friendly message, instead of a raw Postgres error.
  */
-import type { Answer } from "./api/types";
-
 /** Same limits as the database's check constraints. */
 export const TITLE_MAX = 80;
 export const QUESTION_MAX = 2000;
-export const ANSWER_TEXT_MAX = 8000;
-/** The database caps the stored JSON at 64 kB; stop a little earlier. */
-export const ANSWER_JSON_MAX = 60_000;
 /** Titles made from a question are cut shorter than TITLE_MAX, so they fit the sidebar. */
 const AUTO_TITLE_LEN = 60;
 
@@ -82,58 +77,8 @@ export function cleanQuestion(raw: string): string {
 }
 
 /** One question and its answer, ready to save. */
-export interface Exchange {
-  question: string;
-  /** The answer's text (its claims joined), stored in messages.content. */
-  answerText: string;
-  /** The full answer, stored in messages.answer (jsonb). */
-  answer: Answer;
-}
-
 /** Either the checked value, or a message saying what's wrong. */
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
-
-/**
- * Check { question, answer } from a request body.
- *
- * TEMPORARY (Chats phase): answers are still mocked in the browser, so the
- * browser sends the answer to be saved. In the RAG phase the server that
- * writes the answer saves it, and `answer` leaves the request body.
- */
-export function parseExchange(body: unknown): Parsed<Exchange> {
-  if (typeof body !== "object" || body === null) return { ok: false, error: "Send a question and an answer." };
-  const { question, answer } = body as Record<string, unknown>;
-
-  if (typeof question !== "string") return { ok: false, error: "Send a question." };
-  const q = cleanQuestion(question);
-  if (!q) return { ok: false, error: "The question is empty." };
-  if (q.length > QUESTION_MAX) return { ok: false, error: `Questions can be up to ${QUESTION_MAX} characters.` };
-
-  // Only the shape we rely on: an object whose claims are strings.
-  if (typeof answer !== "object" || answer === null || Array.isArray(answer)) {
-    return { ok: false, error: "Send the answer to save." };
-  }
-  const claims = (answer as { claims?: unknown }).claims;
-  if (!Array.isArray(claims) || claims.length === 0 || !claims.every((c) => typeof c === "string")) {
-    return { ok: false, error: "The answer has no text." };
-  }
-  const answerText = claims.join(" ").trim();
-  if (!answerText) return { ok: false, error: "The answer has no text." };
-  if (answerText.length > ANSWER_TEXT_MAX || JSON.stringify(answer).length > ANSWER_JSON_MAX) {
-    return { ok: false, error: "That answer is too long to save." };
-  }
-
-  return { ok: true, value: { question: q, answerText, answer: answer as Answer } };
-}
-
-/** Check the body of POST /api/chats: { courseId, question, answer }. */
-export function parseNewChat(body: unknown): Parsed<Exchange & { courseId: string }> {
-  const courseId = (body as { courseId?: unknown } | null)?.courseId;
-  if (!isUuid(courseId)) return { ok: false, error: "Pick a course." };
-  const exchange = parseExchange(body);
-  if (!exchange.ok) return exchange;
-  return { ok: true, value: { courseId, ...exchange.value } };
-}
 
 /** What PATCH /api/chats/[id] may change: a new title, pinned, or both. */
 export interface ChatPatch {

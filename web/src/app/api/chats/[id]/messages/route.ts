@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { isUuid, parseExchange } from "@/lib/chats";
-import { apiError, dbError } from "@/lib/supabase/errors";
+import { isUuid } from "@/lib/chats";
+import { apiError } from "@/lib/supabase/errors";
 import { toChatMessage } from "@/lib/supabase/mappers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,40 +48,7 @@ export async function GET(_request: Request, { params }: Context) {
   return NextResponse.json(rows.map(toChatMessage));
 }
 
-/**
- * POST /api/chats/<id>/messages { question, answer }: a follow-up in an
- * open chat. Saves both in one insert (one statement: both or neither).
- * The touch_chat() trigger then moves the chat to the top of the sidebar.
- * 201 with the two new messages.
+/*
+ * No POST here any more (security pass, 2026-11-27): same reason as
+ * POST /api/chats. Follow-ups are saved by POST /api/ask on the server.
  */
-export async function POST(request: Request, { params }: Context) {
-  const { id } = await params;
-  if (!isUuid(id)) return apiError("Chat not found.", 404);
-
-  const body: unknown = await request.json().catch(() => null);
-  const parsed = parseExchange(body);
-  if (!parsed.ok) return apiError(parsed.error, 400);
-  const { question, answerText, answer } = parsed.value;
-
-  const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  if (!claimsData?.claims.sub) return apiError("No demo session.", 401);
-
-  const { data: rows, error } = await supabase
-    .from("messages")
-    .insert([
-      { chat_id: id, role: "user", content: question },
-      { chat_id: id, role: "assistant", content: answerText, answer },
-    ])
-    .select(MESSAGE_COLUMNS);
-
-  if (error) {
-    // RLS refused: the chat isn't in this visitor's session (or doesn't
-    // exist). Same 404 as GET, for the same reason.
-    if (error.code === "42501") return apiError("Chat not found.", 404, error);
-    // The 200-message limit → 409 with its message; anything else → 500.
-    return dbError(error, "Couldn't save this message.");
-  }
-
-  return NextResponse.json(rows.map(toChatMessage), { status: 201 });
-}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VERSION } from "@/lib/build-status";
 import { BuildStatus } from "./BuildStatus";
 import { DemoLink } from "./DemoLink";
 import { Logo } from "./Logo";
@@ -42,7 +43,7 @@ export function SiteFooter({ onLanding = false }: { onLanding?: boolean }) {
       </div>
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 border-t border-line px-6 pb-7 pt-4.5 text-[13px] text-ink-2">
         <span>Built by Amaan Ali · Computer Science, Wilfrid Laurier University · 2026</span>
-        <span className="font-mono" translate="no">Next.js · FastAPI · pgvector · v0.1</span>
+        <span className="font-mono" translate="no">Next.js · FastAPI · pgvector · {VERSION}</span>
       </div>
     </footer>
   );

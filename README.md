@@ -528,6 +528,7 @@ recall/
 - **Retrieval-only evaluation:** faithfulness and answer relevancy need an LLM judge (Dyno v1, not built).
 - **No reranker or hybrid search yet:** vector search only. Both are natural next steps, and Dyno would measure them.
 - **The rate limit is per Lambda instance** (in memory); the per-session token budget in the database is the real cost cap.
+- **A visitor can add messages to their own chats directly** through Supabase's API, with their own session token. The app never accepts an answer from the browser (saving happens on the server, in `/api/ask`), but the database can't tell the server and the browser apart: both act *as the visitor*. Closing that completely would mean giving the server a key that bypasses row-level security, a far bigger risk than this one. Accepted, because such messages only ever reach that visitor's own chats, which nobody else can see, and the per-chat and per-message limits still apply.
 - **Small samples:** 20 core and 8 follow-up questions. Every result states its n and its interval for that reason.
 
 ---

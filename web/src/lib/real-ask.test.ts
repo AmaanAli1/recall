@@ -146,3 +146,15 @@ describe("askErrorText", () => {
     expect(askErrorText(new TypeError("Failed to fetch"))).toBeNull();
   });
 });
+
+describe("saving answers from the browser (removed in the security pass, 2026-11-27)", () => {
+  it("with real chats, createChat and addExchange refuse instead of sending an answer anywhere", async () => {
+    const api = await client({ sessions: true, chats: true });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const answer = { claims: ["Made up by the browser."] } as unknown as Parameters<typeof api.createChat>[2];
+    await expect(api.createChat(ALGO, "Q?", answer)).rejects.toThrow(/saved by the server/);
+    await expect(api.addExchange("11111111-1111-4111-8111-111111111111", "Q?", answer)).rejects.toThrow(/saved by the server/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});

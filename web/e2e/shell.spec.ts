@@ -51,8 +51,13 @@ test.describe("app shell", () => {
   test("footer shows the build status and the builder links", async ({ page }) => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
-    // Not tied to the current phase (that changes as the build moves on): Phase N of 7, counted from 1.
-    await expect(footer.getByRole("img", { name: /^Build progress: Phase [1-7] of 7, / })).toBeVisible();
+    // Launched (2026-11-27): the roadmap is the 5 phases actually built, all done.
+    await expect(footer.getByRole("img", { name: /^Build complete: all 5 phases done \(Design, Skeleton, RAG, Dyno, Harden & ship\)\. v1\.0 shipped\.$/ })).toBeVisible();
+    await expect(footer.getByText("Shipped")).toBeVisible();
+    await expect(footer.getByText("5 of 5 done")).toBeVisible();
+    // Unbuilt plans never appear as phases (nothing unbuilt is shown as done).
+    await expect(footer.getByRole("img", { name: /Retrieval upgrades|Train|Dyno v1/ })).toHaveCount(0);
+    await expect(footer.getByText("Next.js · FastAPI · pgvector · v1.0")).toBeVisible();
     await expect(footer.getByRole("link", { name: "LinkedIn" })).toHaveAttribute("href", "https://www.linkedin.com/in/amaan-ali-85967a1b1/");
     await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/AmaanAli1");
     await expect(footer.getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:amaan.ali99@yahoo.com");
